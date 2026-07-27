@@ -269,6 +269,11 @@ function weekdayPattern(){ const b={"월":78,"화":80,"수":83,"목":86,"금":10
 
 // ---- /api/data -------------------------------------------------------------
 app.get("/api/data", async (req,res)=>{
+  // 키가 없으면(배포 공유서버 등) 수집해둔 실데이터 스냅샷을 그대로 제공 → MOCK 안 나옴
+  if(!HAS_KEY){
+    try{ const snap=JSON.parse(fs.readFileSync(path.join(__dirname,"snapshot_full.json"),"utf8"));
+      if(snap&&snap.data&&snap.data.districts) return res.json(snap.data); }catch(e){}
+  }
   let source="MOCK", liveError=null, counts=null;
   if(HAS_KEY){
     try{ counts=await liveCafeCounts(); source="LIVE"; }
