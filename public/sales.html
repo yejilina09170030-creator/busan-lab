@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>가게 매출분석 · 부산 상권랩</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3240;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#58a6ff; --accent2:#f778ba;
+    --up:#3fb950; --down:#f85149; --warn:#d29922;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);display:flex;
+    font-family:"Pretendard","Segoe UI",-apple-system,Roboto,"Malgun Gothic",sans-serif;}
+  .side{width:210px;flex-shrink:0;position:sticky;top:0;height:100vh;
+    background:#0a0e14;border-right:1px solid var(--line);padding:20px 14px;
+    display:flex;flex-direction:column;gap:4px}
+  .side .logo{font-size:16px;font-weight:800;padding:6px 10px 18px;letter-spacing:-.3px}
+  .side .logo span{color:var(--accent)}
+  .side .ngroup{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;padding:14px 10px 6px}
+  .side a{display:block;padding:9px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:13px}
+  .side a:hover{background:var(--panel2)}
+  .side a.on{background:var(--panel2);color:var(--accent);font-weight:600}
+  .side .foot{margin-top:auto;font-size:10px;color:var(--sub);padding:10px;line-height:1.6}
+  .content{flex:1;min-width:0}
+  header{padding:16px 24px;border-bottom:1px solid var(--line);background:#11161d;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:16px;margin:0;font-weight:700}
+  h1 span{color:var(--accent)}
+  .savestat{font-size:11px;color:var(--sub);margin-left:auto}
+  main{padding:20px 24px;max-width:1400px}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .label{font-size:11px;color:var(--sub);margin-bottom:6px}
+  .kpi .val{font-size:20px;font-weight:700}
+  .kpi .val small{font-size:11px;color:var(--sub);font-weight:400}
+  .kpi.hero{border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h3{margin:0 0 4px;font-size:13.5px;font-weight:700}
+  .card .sub{font-size:11px;color:var(--sub);margin-bottom:12px;line-height:1.5}
+  .col-12{grid-column:span 12}.col-7{grid-column:span 7}.col-5{grid-column:span 5}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-size:10.5px;color:var(--sub);text-align:right;border-bottom:1px solid var(--line);padding:6px 6px;white-space:nowrap}
+  th:first-child{text-align:left}
+  td{padding:5px 6px;border-bottom:1px solid #20262f;text-align:right;white-space:nowrap}
+  td:first-child{text-align:left}
+  input,select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:6px;padding:5px 7px;font-size:12px;outline:none}
+  input:focus{border-color:var(--accent)}
+  input.num{width:76px;text-align:right}
+  input.nm{width:120px}
+  input.qty{width:60px;text-align:right;border-color:var(--accent)}
+  button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.del{padding:3px 8px;color:var(--down);font-size:11px}
+  select.tm{width:60px;padding:4px 3px}
+  .pos{color:var(--up);font-weight:700}
+  .neg{color:var(--down);font-weight:700}
+  .pnl-row{display:flex;justify-content:space-between;padding:7px 4px;font-size:12.5px;border-bottom:1px solid #20262f}
+  .pnl-row.head{font-weight:800;font-size:13px;border-bottom:1px solid var(--line)}
+  .pnl-row.total{font-weight:800;font-size:14px;background:var(--panel2);border-radius:8px;padding:10px;margin-top:6px;border:none}
+  .pnl-row .lbl{color:var(--sub)}
+  .pnl-row input.num{width:100px}
+  .chart-wrap{position:relative;height:230px}
+  @media(max-width:1150px){.col-7,.col-5{grid-column:span 12}.kpis{grid-template-columns:repeat(2,1fr)}.side{display:none}}
+</style>
+</head>
+<body>
+<nav class="side">
+  <div class="logo">☕ 부산 <span>상권랩</span></div>
+  <div class="ngroup">분석</div>
+  <a href="/">📊 종합 대시보드</a>
+  <a href="/map.html">🗺️ 입지 · 영토 지도</a>
+  <div class="ngroup">모니터링</div>
+  <a href="/tracker.html">📈 개폐업 트래커</a>
+  <div class="ngroup">운영</div>
+  <a href="/sales.html" class="on">💰 가게 매출분석</a>
+  <div class="foot">☕ 카페 상권 전용<br>소상공인 상가정보 실데이터</div>
+</nav>
+<div class="content">
+<header>
+  <h1>💰 <span>가게 매출분석</span> · 손익 시뮬레이터</h1>
+  <span style="font-size:11px;color:var(--sub)">메뉴원가 × 판매량 + 근무표 → 손익 자동계산</span>
+  <span class="savestat" id="saveStat"></span>
+</header>
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card col-7">
+      <h3>① 메뉴 원가 · 월 판매량</h3>
+      <div class="sub">판매가·재료비·포장비를 내 가게 기준으로 수정하세요. <b style="color:var(--accent)">파란 칸(월판매량)</b>만 채우면 매출이 자동 계산됩니다.</div>
+      <div style="overflow-x:auto"><table id="menuTbl"></table></div>
+      <button id="addMenu" style="margin-top:10px">+ 메뉴 추가</button>
+    </div>
+
+    <div class="card col-5">
+      <h3>비용 구성</h3>
+      <div class="sub">월 비용이 어디에 쓰이는지</div>
+      <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+    </div>
+
+    <div class="card col-12">
+      <h3>② 알바 근무표 ⏰</h3>
+      <div class="sub">요일별 출근~퇴근 시간을 고르면 <b>주휴수당(주 15시간 이상 시 자동 발생)</b>까지 포함해 월 인건비가 계산되고, 아래 손익계산서에 자동 반영됩니다. 시급은 직원마다 다르게 설정 가능 (2025 최저시급 10,030원).</div>
+      <div style="overflow-x:auto"><table id="staffTbl"></table></div>
+      <button id="addStaff" style="margin-top:10px">+ 알바 추가</button>
+    </div>
+
+    <div class="card col-7">
+      <h3>③ 포괄 손익계산서 (월)</h3>
+      <div class="sub">회색 값 = 자동 계산 · 입력칸 = 내 가게 숫자로 수정</div>
+      <div id="pnl"></div>
+    </div>
+
+    <div class="card col-5">
+      <h3>배달 · 고정비 설정</h3>
+      <div class="sub">카페 평균값을 기본으로 넣어뒀습니다</div>
+      <div id="settings"></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => Math.round(n).toLocaleString("ko-KR");
+Chart.defaults.color = "#8b98a9"; Chart.defaults.borderColor = "#2a3240";
+Chart.defaults.font.family = "Pretendard, Segoe UI, Malgun Gothic, sans-serif";
+
+const DAYS = ["월","화","수","목","금","토","일"];
+
+// ---- 기본 데이터 (치킨집 기준) ----
+const DEFAULT = {
+  // 카페 기본 메뉴 (원가산출 엑셀 기반)
+  menus: [
+    { name:"아메리카노 (ICE)",   price:3500, mat:600,  pack:250, qty:900 },
+    { name:"아메리카노 (HOT)",   price:3000, mat:550,  pack:200, qty:350 },
+    { name:"카페라떼 (ICE)",     price:4000, mat:1000, pack:250, qty:450 },
+    { name:"바닐라빈 라떼",      price:4800, mat:1250, pack:250, qty:250 },
+    { name:"초코라떼",           price:4500, mat:1200, pack:250, qty:150 },
+    { name:"밀크티",             price:4500, mat:1050, pack:250, qty:150 },
+    { name:"한라봉 에이드",      price:4800, mat:1300, pack:250, qty:180 },
+    { name:"마들렌",             price:2500, mat:800,  pack:100, qty:200 },
+    { name:"머핀",               price:3000, mat:1000, pack:100, qty:120 },
+  ],
+  staff: [
+    { name:"알바 A", wage:10030, days:[[9,14],[9,14],[9,14],[9,14],[9,14],null,null] },
+    { name:"알바 B", wage:10030, days:[null,null,null,null,[14,20],[10,20],[10,18]] },
+  ],
+  set: {
+    delivShare:10, delivFee:30,
+    staffSalary:0, rent:1500000, mgmt:350000, comm:120000,
+    ad:250000, supplies:200000, equip:35000000, tax:0,
+  },
+};
+let S = JSON.parse(JSON.stringify(DEFAULT));
+let costChart = null;
+
+// ---- 근무 계산 ----
+function staffCalc(st) {
+  let week = 0;
+  for (const d of st.days) if (d && d[1] > d[0]) week += d[1] - d[0];
+  const allowance = week >= 15 ? Math.min(week, 40) / 40 * 8 * st.wage : 0;  // 주휴수당
+  const weekly = week * st.wage + allowance;
+  return { week, allowance, weekly, monthly: weekly * 4.345 };
+}
+
+// ---- 손익 계산 ----
+function calc() {
+  const sales = S.menus.reduce((a,m)=>a + m.price*m.qty, 0);
+  const matCost = S.menus.reduce((a,m)=>a + (m.mat+m.pack)*m.qty, 0);
+  const loss = matCost * 0.03;
+  const delivCost = sales * (S.set.delivShare/100) * (S.set.delivFee/100);
+  const partTime = S.staff.reduce((a,st)=>a + staffCalc(st).monthly, 0);
+  const depre = S.set.equip / 60;   // 5년 감가
+  const sgna = partTime + (+S.set.staffSalary) + (+S.set.rent) + (+S.set.mgmt)
+             + (+S.set.comm) + (+S.set.ad) + (+S.set.supplies) + depre;
+  const op = sales - matCost - loss - delivCost - sgna;
+  const vat = Math.max(0, (sales - matCost) / 11);   // 부가세 대략치
+  const net = op - vat - (+S.set.tax);
+  return { sales, matCost, loss, delivCost, partTime, depre, sgna, op, vat, net };
+}
+
+// ---- 렌더 ----
+function numIn(val, cls, path) {
+  return `<input class="${cls}" type="number" value="${val}" data-path="${path}">`;
+}
+function render() {
+  const c = calc();
+
+  // KPI
+  $("#kpis").innerHTML = [
+    ["월 매출", fmt(c.sales), "원", "hero"],
+    ["재료 원가", fmt(c.matCost), `원 · ${c.sales?(c.matCost/c.sales*100).toFixed(0):0}%`, ""],
+    ["인건비(주휴포함)", fmt(c.partTime + +S.set.staffSalary), "원", ""],
+    ["영업이익", fmt(c.op), `원 · ${c.sales?(c.op/c.sales*100).toFixed(1):0}%`, c.op>=0?"hero":""],
+    ["예상 순이익", fmt(c.net), "원 (부가세 차감)", ""],
+  ].map(([l,v,u,cl])=>`<div class="kpi ${cl}"><div class="label">${l}</div>
+    <div class="val ${v.startsWith("-")?"neg":""}">${v} <small>${u}</small></div></div>`).join("");
+
+  // 메뉴 테이블
+  $("#menuTbl").innerHTML = `<tr><th>메뉴명</th><th>판매가</th><th>재료비</th><th>포장비</th>
+    <th style="color:var(--accent)">월판매량</th><th>월매출</th><th>마진/개</th><th>마진율</th><th></th></tr>`
+    + S.menus.map((m,i)=>{
+      const margin = m.price - m.mat - m.pack;
+      return `<tr>
+        <td><input class="nm" value="${m.name}" data-path="menus.${i}.name"></td>
+        <td>${numIn(m.price,"num",`menus.${i}.price`)}</td>
+        <td>${numIn(m.mat,"num",`menus.${i}.mat`)}</td>
+        <td>${numIn(m.pack,"num",`menus.${i}.pack`)}</td>
+        <td>${numIn(m.qty,"qty",`menus.${i}.qty`)}</td>
+        <td>${fmt(m.price*m.qty)}</td>
+        <td class="${margin>=0?"pos":"neg"}">${fmt(margin)}</td>
+        <td>${m.price?(margin/m.price*100).toFixed(0):0}%</td>
+        <td><button class="del" data-del-menu="${i}">✕</button></td></tr>`;
+    }).join("")
+    + `<tr style="font-weight:800"><td>합계</td><td></td><td></td><td></td>
+       <td>${fmt(S.menus.reduce((a,m)=>a+ +m.qty,0))}</td>
+       <td>${fmt(c.sales)}</td><td colspan="3"></td></tr>`;
+
+  // 근무표
+  const tmSel = (v, path) => {
+    let o = `<option value="">휴무</option>`;
+    for (let h=0; h<=24; h++) o += `<option value="${h}" ${v===h?"selected":""}>${h}시</option>`;
+    return `<select class="tm" data-path="${path}">${o}</select>`;
+  };
+  $("#staffTbl").innerHTML = `<tr><th>이름</th><th>시급(원)</th>`
+    + DAYS.map(d=>`<th>${d}</th>`).join("")
+    + `<th>주간시간</th><th>주휴수당</th><th>월 급여</th><th></th></tr>`
+    + S.staff.map((st,i)=>{
+      const r = staffCalc(st);
+      return `<tr>
+        <td><input class="nm" style="width:80px" value="${st.name}" data-path="staff.${i}.name"></td>
+        <td>${numIn(st.wage,"num",`staff.${i}.wage`)}</td>
+        ${st.days.map((d,di)=>`<td style="text-align:center">
+          ${tmSel(d?d[0]:"", `staff.${i}.days.${di}.0`)}<br>
+          ${tmSel(d?d[1]:"", `staff.${i}.days.${di}.1`)}</td>`).join("")}
+        <td>${r.week.toFixed(1)}h ${r.week>=15?'<span class="pos">주휴○</span>':'<span style="color:var(--sub)">주휴×</span>'}</td>
+        <td>${fmt(r.allowance)}</td>
+        <td class="pos">${fmt(r.monthly)}</td>
+        <td><button class="del" data-del-staff="${i}">✕</button></td></tr>`;
+    }).join("")
+    + `<tr style="font-weight:800"><td colspan="9">알바 인건비 합계 (월)</td>
+       <td colspan="2"></td><td class="pos">${fmt(c.partTime)}</td><td></td></tr>`;
+
+  // 설정
+  const set = (l, path, v, unit) =>
+    `<div class="pnl-row"><span class="lbl">${l}</span><span>${numIn(v,"num",path)} <small style="color:var(--sub)">${unit}</small></span></div>`;
+  $("#settings").innerHTML =
+    set("배달 매출 비중", "set.delivShare", S.set.delivShare, "%")
+    + set("배달 수수료+배달비율", "set.delivFee", S.set.delivFee, "% (배달매출 대비)")
+    + set("직원(정직원) 급여", "set.staffSalary", S.set.staffSalary, "원/월")
+    + set("임대료", "set.rent", S.set.rent, "원/월")
+    + set("관리비·수도광열", "set.mgmt", S.set.mgmt, "원/월")
+    + set("통신비(POS 등)", "set.comm", S.set.comm, "원/월")
+    + set("광고선전비(리뷰 등)", "set.ad", S.set.ad, "원/월")
+    + set("소모품비", "set.supplies", S.set.supplies, "원/월")
+    + set("장비·인테리어 총투자", "set.equip", S.set.equip, "원 (÷60개월 감가)")
+    + set("기타 세금·이자", "set.tax", S.set.tax, "원/월");
+
+  // 손익계산서
+  const row = (l,v,cls="") => `<div class="pnl-row"><span class="lbl">${l}</span><span class="${cls}">${fmt(v)} 원</span></div>`;
+  $("#pnl").innerHTML =
+    `<div class="pnl-row head"><span>1. 매출</span><span>${fmt(c.sales)} 원</span></div>`
+    + row("2. 매출원가 (재료+포장)", -c.matCost)
+    + row("&nbsp;&nbsp;&nbsp;로스 비용 (원가의 3%)", -c.loss)
+    + `<div class="pnl-row head"><span>3. 매출이익</span><span>${fmt(c.sales-c.matCost-c.loss)} 원</span></div>`
+    + row("4. 배달 수수료·배달비", -c.delivCost)
+    + row(`&nbsp;&nbsp;&nbsp;알바 급여 <b style="color:var(--accent)">(근무표 자동)</b>`, -c.partTime)
+    + row("&nbsp;&nbsp;&nbsp;직원 급여", -S.set.staffSalary)
+    + row("&nbsp;&nbsp;&nbsp;지급임차료(임대)", -S.set.rent)
+    + row("&nbsp;&nbsp;&nbsp;관리비·수도광열", -S.set.mgmt)
+    + row("&nbsp;&nbsp;&nbsp;통신비", -S.set.comm)
+    + row("&nbsp;&nbsp;&nbsp;광고선전비", -S.set.ad)
+    + row("&nbsp;&nbsp;&nbsp;소모품비", -S.set.supplies)
+    + row("&nbsp;&nbsp;&nbsp;감가상각 (5년)", -c.depre)
+    + `<div class="pnl-row head"><span>5. 영업손익</span><span class="${c.op>=0?"pos":"neg"}">${fmt(c.op)} 원</span></div>`
+    + row("부가세 예상 ((매출−재료)÷11)", -c.vat)
+    + row("기타 세금·이자", -S.set.tax)
+    + `<div class="pnl-row total"><span>순이익 (월)</span>
+       <span class="${c.net>=0?"pos":"neg"}">${fmt(c.net)} 원 · 마진 ${c.sales?(c.net/c.sales*100).toFixed(1):0}%</span></div>`;
+
+  // 비용 도넛
+  if (costChart) costChart.destroy();
+  costChart = new Chart($("#costChart"), { type:"doughnut",
+    data:{ labels:["재료·로스","배달수수료","인건비","임대·관리","광고·소모·통신","감가상각"],
+      datasets:[{ data:[c.matCost+c.loss, c.delivCost, c.partTime + +S.set.staffSalary,
+        +S.set.rent + +S.set.mgmt, +S.set.ad + +S.set.supplies + +S.set.comm, c.depre],
+        backgroundColor:["#d29922","#f778ba","#58a6ff","#a371f7","#3fb950","#8b98a9"],
+        borderColor:"#161b22", borderWidth:2 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:"55%", animation:false,
+      plugins:{ legend:{ position:"bottom", labels:{ font:{size:10}, boxWidth:10, padding:8 } } } } });
+
+  wire();
+}
+
+// ---- 입력 연결 ----
+function setPath(path, val) {
+  const parts = path.split(".");
+  let o = S;
+  for (let i=0; i<parts.length-1; i++) {
+    const k = parts[i];
+    // 근무 시간 셀: null 이면 [s,e] 배열 생성
+    if (o[k] == null && i === parts.length-2 && /^\d$/.test(parts[i+1])) o[k] = [null, null];
+    o = o[isNaN(+k) ? k : +k];
+  }
+  const last = parts[parts.length-1];
+  o[isNaN(+last) ? last : +last] = val;
+}
+function wire() {
+  document.querySelectorAll("input[data-path],select[data-path]").forEach(el => {
+    el.addEventListener("change", () => {
+      const p = el.dataset.path;
+      let v = el.value;
+      if (el.classList.contains("tm")) {
+        // 근무시간: 빈값 → 그 요일 휴무 처리
+        const [_, si, __, di] = p.split(".");
+        if (v === "") { S.staff[+si].days[+di] = null; render(); save(); return; }
+        v = +v;
+        if (!S.staff[+si].days[+di]) S.staff[+si].days[+di] = [null, null];
+        S.staff[+si].days[+di][+p.split(".")[4]] = v;
+        render(); save(); return;
+      }
+      if (el.type === "number") v = +v || 0;
+      setPath(p, v);
+      render(); save();
+    });
+  });
+  document.querySelectorAll("[data-del-menu]").forEach(b =>
+    b.addEventListener("click", ()=>{ S.menus.splice(+b.dataset.delMenu,1); render(); save(); }));
+  document.querySelectorAll("[data-del-staff]").forEach(b =>
+    b.addEventListener("click", ()=>{ S.staff.splice(+b.dataset.delStaff,1); render(); save(); }));
+}
+$("#addMenu").addEventListener("click", ()=>{
+  S.menus.push({ name:"새 메뉴", price:10000, mat:4000, pack:500, qty:0 }); render(); save();
+});
+$("#addStaff").addEventListener("click", ()=>{
+  S.staff.push({ name:"알바 "+(S.staff.length+1), wage:10030, days:[null,null,null,null,null,null,null] }); render(); save();
+});
+
+// ---- 저장/불러오기 (서버 파일 → LAN 어디서든 동일) ----
+let saveTimer = null;
+function save() {
+  $("#saveStat").textContent = "저장 중...";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await fetch("/api/shop", { method:"POST", body: JSON.stringify(S) });
+      $("#saveStat").textContent = "✓ 자동저장됨 " + new Date().toLocaleTimeString("ko-KR");
+    } catch { $("#saveStat").textContent = "저장 실패(로컬만)"; }
+    localStorage.setItem("shopS", JSON.stringify(S));
+  }, 600);
+}
+(async function init() {
+  try {
+    const j = await (await fetch("/api/shop")).json();
+    if (j && j.menus) S = j;
+    else {
+      const ls = localStorage.getItem("shopS");
+      if (ls) S = JSON.parse(ls);
+    }
+  } catch {}
+  render();
+})();
+</script>
+</body>
+</html>

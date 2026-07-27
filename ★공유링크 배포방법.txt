@@ -1,0 +1,57 @@
+부산 상권랩 — 실시간 공유 링크 만들기 (클라우드 영구 배포 · Render)
+================================================================
+결과물: 누구나 열면 실시간으로 보이는 고정 링크 (내 PC 꺼도 살아있음)
+준비물: GitHub 계정 + Render 계정 (둘 다 무료, 이메일 가입)
+소요: 처음 한 번 약 20분. 그 뒤론 링크가 항상 유지됨.
+
+────────────────────────────────────────────────
+1단계) 코드를 GitHub에 올리기   ※ GitHub Desktop이 제일 쉬움
+────────────────────────────────────────────────
+1) GitHub 가입 → https://github.com/signup
+2) GitHub Desktop 설치 → https://desktop.github.com  (설치 후 로그인)
+3) GitHub Desktop 실행 → 상단 File → "Add local repository"
+   → 이 폴더 선택:
+        E:\예지\ㄱ.대동병원공정무역카페\부산상권랩
+   → "create a repository" 안내가 뜨면 클릭해서 만들기
+4) 오른쪽 아래 "Commit to main" 클릭 (메시지 아무거나)
+5) 상단 "Publish repository" 클릭
+   → 이름 예: busan-lab
+   → Publish  (Private/Public 아무거나 OK)
+
+   ✅ 내 인증키(config.json)는 .gitignore로 자동 제외됨 — 절대 안 올라감. 안심.
+
+────────────────────────────────────────────────
+2단계) Render에 배포
+────────────────────────────────────────────────
+1) Render 가입 → https://render.com  →  "Get Started for Free"
+   →  "GitHub로 계속" 눌러 GitHub 계정으로 로그인(연결)
+2) 왼쪽 위 New +  →  "Web Service"
+3) 방금 올린 저장소(busan-lab) 선택  →  Connect
+4) 설정 화면 — render.yaml이 자동으로 채워줌.
+   (자동 안되면 수동:  Build Command = npm install
+                       Start Command = node server.js
+                       Instance Type = Free)
+5) ★★ 아래 "Environment Variables"  →  Add Environment Variable
+        Key   :  DATA_GO_KR
+        Value :  (내 config.json 파일 안에 있는 data.go.kr 인증키를 복사해 붙여넣기)
+   →  저장
+6) 맨 아래 "Create Web Service"  →  배포 시작 (2~4분 기다리기)
+
+────────────────────────────────────────────────
+3단계) 완성 — 링크 확인
+────────────────────────────────────────────────
+- 배포가 끝나면 화면 위에 주소가 나옵니다. 예)  https://busan-lab.onrender.com
+- ★공유할 실시간 링크 = 그 주소 뒤에 /full :
+        https://busan-lab.onrender.com/full
+- 이 링크를 카톡·메일로 보내면 → 누구나 실시간 대시보드를 봅니다.
+
+────────────────────────────────────────────────
+참고사항
+────────────────────────────────────────────────
+· 무료 플랜은 15분간 방문자가 없으면 잠듦 → 다음 접속 때 ~30초 뒤 깨어남(첫 접속만 느림).
+· 코드/데이터를 고치면 GitHub Desktop에서 Commit → Push 하면 Render가 자동 재배포.
+· 매장 데이터 최신화: 실시간 API로 자동 반영됨. (완전 최신 스냅샷 원하면 로컬서
+   node collect.js 실행 후 GitHub Desktop으로 Push)
+· 방문자가 많으면 data.go.kr 하루 호출한도(무료키)를 넘을 수 있음 → 그땐 잠깐 스냅샷으로 보임.
+
+막히는 단계 있으면 그 화면 캡쳐해서 물어보세요. 바로 짚어드립니다.

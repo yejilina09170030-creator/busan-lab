@@ -1,0 +1,15 @@
+{
+  "name": "busan-sangkwon-lab",
+  "version": "1.0.0",
+  "description": "부산 카페 상권분석 대시보드 (실시간 백엔드)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

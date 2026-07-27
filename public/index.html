@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>부산 카페 상권분석 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3240;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#58a6ff; --accent2:#f778ba;
+    --up:#3fb950; --down:#f85149; --warn:#d29922;
+    --c1:#58a6ff; --c2:#f778ba; --c3:#3fb950; --c4:#d29922; --c5:#a371f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);display:flex;
+    font-family:"Pretendard","Segoe UI",-apple-system,Roboto,"Malgun Gothic",sans-serif;}
+  .side{width:210px;flex-shrink:0;position:sticky;top:0;height:100vh;
+    background:#0a0e14;border-right:1px solid var(--line);padding:20px 14px;
+    display:flex;flex-direction:column;gap:4px}
+  .side .logo{font-size:16px;font-weight:800;padding:6px 10px 18px;letter-spacing:-.3px}
+  .side .logo span{color:var(--accent)}
+  .side .ngroup{font-size:10px;color:var(--sub);text-transform:uppercase;
+    letter-spacing:1px;padding:14px 10px 6px}
+  .side a{display:block;padding:9px 12px;border-radius:8px;color:var(--txt);
+    text-decoration:none;font-size:13px;line-height:1.4}
+  .side a:hover{background:var(--panel2)}
+  .side a.on{background:var(--panel2);color:var(--accent);font-weight:600}
+  .side .foot{margin-top:auto;font-size:10px;color:var(--sub);padding:10px;line-height:1.6}
+  .content{flex:1;min-width:0}
+  @media(max-width:900px){.side{display:none}}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:linear-gradient(180deg,#11161d,#0d1117);position:sticky;top:0;z-index:10}
+  h1{font-size:18px;margin:0;font-weight:700;letter-spacing:-.3px}
+  h1 span{color:var(--accent)}
+  .badge{font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid var(--line);color:var(--sub)}
+  .badge.live{color:var(--up);border-color:var(--up)}
+  .badge.mock{color:var(--warn);border-color:var(--warn)}
+  .controls{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  select,button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  button.primary{background:var(--accent);color:#001;border:none;font-weight:600}
+  button:hover{border-color:var(--accent)}
+  .updated{font-size:11px;color:var(--sub)}
+  main{padding:20px 24px;max-width:1500px;margin:0 auto}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .label{font-size:11px;color:var(--sub);margin-bottom:6px}
+  .kpi .val{font-size:22px;font-weight:700}
+  .kpi .val small{font-size:12px;color:var(--sub);font-weight:400}
+  .kpi .sub{font-size:11px;margin-top:4px;color:var(--sub)}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h3{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--txt);display:flex;gap:8px;align-items:center}
+  .card h3 .hint{font-size:10px;color:var(--sub);font-weight:400}
+  .col-6{grid-column:span 6}.col-4{grid-column:span 4}.col-8{grid-column:span 8}
+  .col-12{grid-column:span 12}.col-5{grid-column:span 5}.col-7{grid-column:span 7}
+  .insight{font-size:12px;margin:-4px 0 10px;color:var(--sub);line-height:1.5}
+  .insight b{color:var(--accent2)}
+  .store-list{max-height:440px;overflow-y:auto}
+  .store-item{display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--line)}
+  .store-item:hover{background:var(--panel2)}
+  .s-ico{width:34px;height:34px;border-radius:8px;background:var(--panel2);
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .s-info{flex:1;min-width:0}
+  .s-name{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s-cat{font-size:10.5px;color:var(--sub)}
+  .s-sales{font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap}
+  .chart-wrap{position:relative;height:300px}
+  .chart-sm{height:240px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--sub);font-weight:500;position:sticky;top:0;background:var(--panel)}
+  tr:hover td{background:var(--panel2)}
+  .tbl-scroll{max-height:360px;overflow:auto}
+  .rank{color:var(--accent);font-weight:700}
+  .pill{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10px}
+  .note{font-size:11px;color:var(--sub);margin-top:16px;line-height:1.7;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .note b{color:var(--txt)}
+  @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.col-6,.col-4,.col-8,.col-5,.col-7{grid-column:span 12}}
+</style>
+</head>
+<body>
+<nav class="side">
+  <div class="logo">☕ 부산 <span>상권랩</span></div>
+  <div class="ngroup">분석</div>
+  <a href="/" class="on">📊 종합 대시보드</a>
+  <a href="/map.html">🗺️ 입지 · 영토 지도</a>
+  <div class="ngroup">모니터링</div>
+  <a href="/tracker.html">📈 개폐업 트래커</a>
+  <div class="ngroup">운영</div>
+  <a href="/sales.html">💰 가게 매출분석</a>
+  <div class="foot">☕ 카페 상권 전용<br>소상공인 상가정보 실데이터</div>
+</nav>
+<div class="content">
+<header>
+  <h1>부산 <span>카페</span> 상권분석 · <span id="catTitle">카페</span></h1>
+  <span class="badge" id="srcBadge">…</span>
+  <div class="controls">
+    <span class="badge" style="color:var(--accent);border-color:var(--accent)">☕ 카페 전용</span>
+    <select id="guSelect" title="구 선택"></select>
+    <select id="mode" title="갱신 모드">
+      <option value="off">자동갱신 끔</option>
+      <option value="5">실시간(5초)</option>
+      <option value="30">실시간(30초)</option>
+      <option value="weekly">주간(7일)</option>
+    </select>
+    <button class="primary" id="refresh">↻ 새로고침</button>
+    <span class="updated" id="updated"></span>
+  </div>
+</header>
+
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card col-7">
+      <h3>부산 구별 매출 지도 <span class="hint">억원/월 · 구를 클릭하면 선택</span></h3>
+      <svg id="mapSvg" viewBox="0 0 640 430" style="width:100%;height:auto;display:block"></svg>
+    </div>
+    <div class="card col-5">
+      <h3>매장별 추정 월매출 <span class="hint" id="storeHint"></span></h3>
+      <input id="storeSearch" placeholder="🔍 매장명·동 검색 (예: 상타치킨, 명지)"
+        style="width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+        color:var(--txt);padding:8px 12px;font-size:12px;margin-bottom:8px;outline:none">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <select id="storeDong" title="동 필터" style="flex:1;font-size:12px"></select>
+        <select id="storeSort" title="정렬" style="flex:1;font-size:12px">
+          <option value="salesDesc">💰 추정매출 높은순</option>
+          <option value="salesAsc">추정매출 낮은순</option>
+          <option value="newest">🆕 최신 오픈순</option>
+          <option value="name">가나다순</option>
+        </select>
+      </div>
+      <div class="insight" id="storeInsight"></div>
+      <div class="store-list" id="storeList"></div>
+    </div>
+
+    <div class="card col-8">
+      <h3>구별 월 카드매출 랭킹 <span class="hint" id="rankHint">억원 / 월</span></h3>
+      <div class="chart-wrap"><canvas id="salesRank"></canvas></div>
+    </div>
+    <div class="card col-4">
+      <h3>연령대별 매출 비중 <span class="hint" id="ageHint"></span></h3>
+      <div class="chart-wrap"><canvas id="ageDonut"></canvas></div>
+    </div>
+
+    <div class="card col-6">
+      <h3>유동인구 ↔ 매출 상관 <span class="hint">버블크기=점포수</span></h3>
+      <div class="chart-wrap"><canvas id="scatter"></canvas></div>
+    </div>
+    <div class="card col-6">
+      <h3>배달앱 주문수 랭킹 <span class="hint">건 / 월</span></h3>
+      <div class="chart-wrap"><canvas id="delivery"></canvas></div>
+    </div>
+
+    <div class="card col-4">
+      <h3>성별 × 연령대 결제 <span class="hint">전체 결제 중 %</span></h3>
+      <div class="insight" id="gaInsight"></div>
+      <div class="chart-wrap chart-sm"><canvas id="genderAge"></canvas></div>
+    </div>
+    <div class="card col-4">
+      <h3>가구 유형별 결제</h3>
+      <div class="insight" id="hhInsight"></div>
+      <div class="chart-wrap chart-sm"><canvas id="household"></canvas></div>
+    </div>
+    <div class="card col-4">
+      <h3>성별 · 평일/휴일 결제</h3>
+      <div class="insight" id="mixInsight"></div>
+      <div class="chart-wrap chart-sm"><canvas id="mixBar"></canvas></div>
+    </div>
+
+    <div class="card col-8">
+      <h3>월별 동향 · 최근 12개월 <span class="hint" id="trendHint">매출 추이 + 개업·폐업</span></h3>
+      <div class="chart-wrap"><canvas id="trend"></canvas></div>
+    </div>
+    <div class="card col-4">
+      <h3>브랜드 TOP 10 <span class="hint" id="brandHint">부산 전체</span></h3>
+      <div class="chart-wrap"><canvas id="brands"></canvas></div>
+    </div>
+
+    <div class="card col-8">
+      <h3>시간대별 매출 패턴 <span class="hint">카페 낮 · 치킨 저녁 · 호프 심야 피크</span></h3>
+      <div class="chart-wrap chart-sm"><canvas id="hour"></canvas></div>
+    </div>
+    <div class="card col-4">
+      <h3>요일별 매출 패턴 <span class="hint">금·토 피크</span></h3>
+      <div class="chart-wrap chart-sm"><canvas id="weekday"></canvas></div>
+    </div>
+
+    <div class="card col-12">
+      <h3>구별 종합 지표 <span class="hint">점포당 월매출·배후세대·유동인구로 입지 비교</span></h3>
+      <div class="tbl-scroll"><table id="tbl"></table></div>
+    </div>
+
+    <div class="card col-12">
+      <h3>🏢 상가 매매 실거래가 <span class="hint" id="tradeHint">국토부 실거래 · 최근 6개월</span></h3>
+      <div class="insight" id="tradeInsight">로딩...</div>
+      <div class="tbl-scroll" style="max-height:320px"><table id="tradeTbl"></table></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>ℹ️ 데이터 안내</b> — <b>실데이터</b>: 카페 점포수·브랜드·오픈시기·건물명(소상공인 상가정보, 업종코드 I21201),
+    아파트 단지·세대수(국토부 K-apt), 상가 매매 실거래가(국토부 RTMS).
+    <b>추정치</b>: 매출·연령·성별·유동인구·배달 — 업종 평균 기반이며 화면에 "(추정)"으로 표기됩니다.
+    <b>오픈업</b> 앱은 매출추정 벤치마크로 참고하세요.
+  </div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString("ko-KR");
+const charts = {};
+let DATA = null, curGu = "부산진구", curCat = "cafe";
+Chart.defaults.color = "#8b98a9";
+Chart.defaults.borderColor = "#2a3240";
+Chart.defaults.font.family = "Pretendard, Segoe UI, Malgun Gothic, sans-serif";
+const PAL = ["#58a6ff","#f778ba","#3fb950","#d29922","#a371f7"];
+
+let GEO = null;
+async function load(){
+  const r = await fetch("/api/data?cat=" + curCat);
+  DATA = await r.json();
+  if(!GEO){ try{ GEO = await (await fetch("/busan_geo.json")).json(); }catch(e){} }
+  $("#catTitle").textContent = DATA.meta.category;
+  $("#rankHint").textContent = "억원 / 월 · " + DATA.meta.category;
+  const b = $("#srcBadge");
+  if(DATA.meta.source==="LIVE"){ b.textContent="LIVE (점포·브랜드 실데이터)"; b.className="badge live"; }
+  else if(DATA.meta.liveError){ b.textContent="연동 오류 → MOCK"; b.className="badge mock"; b.title=DATA.meta.liveError; }
+  else { b.textContent="MOCK 데이터"; b.className="badge mock"; }
+  $("#updated").textContent = "갱신 " + new Date(DATA.meta.generatedAt).toLocaleTimeString("ko-KR");
+  if(!$("#guSelect").options.length){
+    DATA.districts.map(d=>d.gu).forEach(g=>{
+      const o=document.createElement("option");o.value=g;o.textContent=g;
+      if(g===curGu)o.selected=true;$("#guSelect").appendChild(o);
+    });
+  }
+  render();
+}
+
+function render(){
+  const d = DATA.districts.find(x=>x.gu===curGu);
+  renderKpis(d);
+  renderMap();
+  renderStores(d);
+  renderGenderAge(d);
+  renderHousehold(d);
+  renderMix(d);
+  renderSalesRank();
+  renderAgeDonut(d);
+  renderScatter();
+  renderDelivery();
+  renderTrend(d);
+  renderBrands();
+  renderTradeCard();
+  renderHour();
+  renderWeekday();
+  renderTable();
+}
+
+function renderKpis(d){
+  const cards = [
+    ["월 카드매출", d.monthlySales.toFixed(1), "억원"],
+    ["점포수", fmt(d.stores), "개"],
+    ["점포당 월매출", fmt(d.kpi.salesPerStoreMan), "만원"],
+    ["일평균 유동인구", fmt(d.floating), "명"],
+    ["아파트 세대수", fmt(d.apt), "세대"],
+    ["월 배달 주문수", fmt(d.delivery), "건"],
+  ];
+  $("#kpis").innerHTML = cards.map(([l,v,u])=>`
+    <div class="kpi"><div class="label">${l}</div>
+      <div class="val">${v} <small>${u}</small></div>
+      <div class="sub">${curGu} 기준</div></div>`).join("");
+}
+
+function make(id,cfg){ if(charts[id])charts[id].destroy(); charts[id]=new Chart($("#"+id),cfg); }
+
+function renderSalesRank(){
+  const s=[...DATA.districts].sort((a,b)=>b.monthlySales-a.monthlySales);
+  make("salesRank",{type:"bar",data:{labels:s.map(d=>d.gu),
+    datasets:[{data:s.map(d=>d.monthlySales),
+      backgroundColor:s.map(d=>d.gu===curGu?"#f778ba":"#58a6ff"),borderRadius:4}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+" 억원/월"}}},
+      scales:{x:{grid:{color:"#20262f"}},y:{ticks:{font:{size:11}}}},
+      onClick:(e,el)=>{if(el.length){curGu=s[el[0].index].gu;$("#guSelect").value=curGu;render();}}}});
+}
+
+function renderAgeDonut(d){
+  $("#ageHint").textContent = curGu;
+  const labels=Object.keys(d.ageSales), vals=Object.values(d.ageSales);
+  make("ageDonut",{type:"doughnut",data:{labels,
+    datasets:[{data:vals,backgroundColor:PAL,borderColor:"#161b22",borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:"58%",
+      plugins:{legend:{position:"bottom",labels:{font:{size:11},padding:12}},
+        tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}억 (${d.ageMixPct[c.label]}%)`}}}}});
+}
+
+function renderScatter(){
+  make("scatter",{type:"bubble",data:{datasets:DATA.districts.map((d,i)=>({
+    label:d.gu,data:[{x:d.floating,y:d.monthlySales,r:Math.sqrt(d.stores)/1.4}],
+    backgroundColor:(d.gu===curGu?"#f778ba":"#58a6ff")+"cc"}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{
+        const d=DATA.districts[c.datasetIndex];
+        return `${d.gu} · 유동 ${fmt(d.floating)}명 · 매출 ${d.monthlySales}억 · 점포 ${d.stores}`;}}}},
+      scales:{x:{title:{display:true,text:"일평균 유동인구(명)"},grid:{color:"#20262f"}},
+        y:{title:{display:true,text:"월 카드매출(억)"},grid:{color:"#20262f"}}}}});
+}
+
+function renderDelivery(){
+  const s=[...DATA.districts].sort((a,b)=>b.delivery-a.delivery).slice(0,10);
+  make("delivery",{type:"bar",data:{labels:s.map(d=>d.gu),
+    datasets:[{data:s.map(d=>d.delivery),
+      backgroundColor:s.map(d=>d.gu===curGu?"#f778ba":"#3fb950"),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)+" 건/월"}}},
+      scales:{y:{grid:{color:"#20262f"}},x:{ticks:{font:{size:10}}}}}});
+}
+
+// ---- 오픈업 스타일: 부산 지도 (구 경계 + 매출 라벨) ----
+function lerpColor(t){
+  const stops=[[121,223,193],[88,166,255],[163,113,247]]; // 민트→파랑→보라
+  const seg=t<0.5?0:1, u=Math.min(1,Math.max(0,(t-seg*0.5)/0.5));
+  const c=stops[seg].map((v,i)=>Math.round(v+(stops[seg+1][i]-v)*u));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function geoPolys(f){const g=f.geometry;return g.type==="Polygon"?[g.coordinates]:g.coordinates;}
+function renderMap(){
+  if(!GEO) return;
+  const W=640,H=430,pad=18;
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  GEO.features.forEach(f=>geoPolys(f).forEach(p=>p.forEach(r=>r.forEach(([x,y])=>{
+    if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;}))));
+  const sc=Math.min((W-2*pad)/(maxX-minX),(H-2*pad)/(maxY-minY));
+  const ox=(W-(maxX-minX)*sc)/2, oy=(H-(maxY-minY)*sc)/2;
+  const px=(x,y)=>[(x-minX)*sc+ox, H-((y-minY)*sc+oy)];
+  const byGu={}; DATA.districts.forEach(d=>byGu[d.gu]=d);
+  const vals=DATA.districts.map(d=>d.monthlySales).sort((a,b)=>a-b);
+  let paths="", chips="";
+  for(const f of GEO.features){
+    const nm=f.properties.name, d=byGu[nm];
+    if(!d) continue;
+    const t=vals.indexOf(d.monthlySales)/(vals.length-1);
+    let path="", biggest=null, bigLen=0;
+    for(const poly of geoPolys(f)){
+      for(const ring of poly)
+        path+="M"+ring.map(([x,y])=>px(x,y).map(v=>v.toFixed(1)).join(",")).join("L")+"Z";
+      if(poly[0].length>bigLen){bigLen=poly[0].length;biggest=poly[0];}
+    }
+    const cx=biggest.reduce((a,p)=>a+px(p[0],p[1])[0],0)/biggest.length;
+    const cy=biggest.reduce((a,p)=>a+px(p[0],p[1])[1],0)/biggest.length;
+    const sel=nm===curGu;
+    paths+=`<path d="${path}" fill="${lerpColor(t)}" fill-opacity="${sel?1:.7}"
+      stroke="${sel?"#fff":"#0d1117"}" stroke-width="${sel?2:1}"
+      style="cursor:pointer" onclick="pickGu('${nm}')"><title>${nm} ${d.monthlySales}억/월</title></path>`;
+    const label=`${nm} ${d.monthlySales.toFixed(0)}억`;
+    const w=label.length*9.5+14;
+    chips+=`<g style="cursor:pointer" onclick="pickGu('${nm}')">
+      <rect x="${(cx-w/2).toFixed(1)}" y="${(cy-11).toFixed(1)}" width="${w.toFixed(1)}" height="20" rx="10"
+        fill="${sel?"#f778ba":"#161b22ee"}" stroke="${sel?"#fff":"#2a3240"}"/>
+      <text x="${cx.toFixed(1)}" y="${(cy+3.5).toFixed(1)}" text-anchor="middle" font-size="10.5"
+        fill="${sel?"#001":"#e6edf3"}" font-weight="600">${label}</text></g>`;
+  }
+  // 범례
+  let legend=`<text x="18" y="${H-26}" font-size="10" fill="#8b98a9">낮음</text>
+    <text x="118" y="${H-26}" font-size="10" fill="#8b98a9">높음</text>`;
+  for(let i=0;i<20;i++)
+    legend+=`<rect x="${44+i*3.4}" y="${H-34}" width="3.4" height="10" fill="${lerpColor(i/19)}"/>`;
+  $("#mapSvg").innerHTML=paths+chips+legend;
+}
+window.pickGu=g=>{curGu=g;$("#guSelect").value=g;render();};
+
+// ---- 오픈업 스타일: 매장 리스트 ----
+function man(n){
+  if(n>=10000){const e=Math.floor(n/10000),r=n%10000;return r?`${e}억 ${fmt(r)}만`:`${e}억`;}
+  return fmt(n)+"만";
+}
+let STORES = { key:"", items:[], source:"", total:0 };
+async function renderStores(d){
+  const key = curGu + "|" + curCat;
+  if (STORES.key !== key) {
+    STORES = { key, items: d.storeList, source: "…", total: d.storeList.length };
+    drawStores();
+    try {
+      const j = await (await fetch(`/api/stores?gu=${encodeURIComponent(curGu)}&cat=${curCat}`)).json();
+      if (curGu + "|" + curCat !== key) return;   // 그 사이 구가 바뀜
+      STORES = { key, items: j.items, source: j.source, total: j.total };
+    } catch(e) { STORES.source = "MOCK"; }
+    updateDongOptions();
+  }
+  drawStores();
+}
+function updateDongOptions(){
+  const sel = $("#storeDong"), prev = sel.value;
+  const dongs = [...new Set(STORES.items.map(s=>s.dong).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">📍 전체 동 (${dongs.length})</option>`
+    + dongs.map(d=>`<option value="${d}">${d}</option>`).join("");
+  if (dongs.includes(prev)) sel.value = prev;
+}
+function yearBadge(s){
+  if(!s.year) return "";
+  if(s.year <= 2022) return ` · <span style="color:var(--sub)">'22 이전 오픈</span>`;
+  const [y,m] = (s.ym||"").split(".");
+  return ` · <span style="color:var(--up);font-weight:600">'${y.slice(2)}.${m} 오픈</span>`;
+}
+function drawStores(){
+  const q = ($("#storeSearch").value || "").trim();
+  const dong = $("#storeDong").value;
+  const sort = $("#storeSort").value;
+  let items = STORES.items.filter(s =>
+    (!q || (s.name||"").includes(q) || (s.dong||"").includes(q)) &&
+    (!dong || s.dong === dong));
+  if (sort === "salesDesc") items.sort((a,b)=>b.max-a.max);
+  else if (sort === "salesAsc") items.sort((a,b)=>a.max-b.max);
+  else if (sort === "newest") items.sort((a,b)=>(b.ym||"").localeCompare(a.ym||""));
+  else items.sort((a,b)=>(a.name||"").localeCompare(b.name||"","ko"));
+  $("#storeHint").textContent = curGu + (STORES.source==="LIVE" ? " · 실제 매장명" : " · 목업");
+  const filterDesc = [q && `"${q}"`, dong].filter(Boolean).join(" · ");
+  $("#storeInsight").innerHTML =
+    `매장 <b>${fmt(STORES.total)}</b>개${filterDesc ? ` 중 <b>${filterDesc}</b> 필터 <b>${items.length}</b>개` : ""}`
+    + ` <span style="color:var(--warn)">· 금액은 추정치</span>`;
+  $("#storeList").innerHTML = items.slice(0,80).map(s=>`
+    <div class="store-item">
+      <div class="s-ico">${(s.cat||"").includes("치킨")?"🍗":(s.cat||"").includes("카페")?"☕":"🍺"}</div>
+      <div class="s-info"><div class="s-name">${s.name}</div>
+        <div class="s-cat">${s.cat} 전문점${s.dong?` · ${s.dong}`:""}${yearBadge(s)}</div></div>
+      <div class="s-sales">${man(s.min)} ~ ${man(s.max)} 원</div>
+    </div>`).join("")
+    || `<div style="padding:24px;color:var(--sub);font-size:12px;text-align:center">"${q}" 검색 결과가 없습니다</div>`;
+}
+
+// ---- 오픈업 스타일: 성별×연령 / 가구유형 / 성별·평일휴일 ----
+function renderGenderAge(d){
+  const ga=d.openup.genderAge, ages=Object.keys(ga["남성"]);
+  let best={v:0,g:"",a:""};
+  for(const g of ["남성","여성"]) for(const a of ages)
+    if(ga[g][a]>best.v) best={g,a,v:ga[g][a]};
+  $("#gaInsight").innerHTML=`전체 결제 중 <b>${best.v.toFixed(0)}%</b>는 <b>${best.g} ${best.a}</b> 고객이 결제했어요`;
+  make("genderAge",{type:"bar",data:{labels:ages,datasets:[
+    {label:"남성",data:ages.map(a=>ga["남성"][a]),backgroundColor:"#58a6ff",borderRadius:3},
+    {label:"여성",data:ages.map(a=>ga["여성"][a]),backgroundColor:"#f778ba",borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{font:{size:10},boxWidth:10}}},
+      scales:{y:{grid:{color:"#20262f"},ticks:{callback:v=>v+"%"}},x:{ticks:{font:{size:10}}}}}});
+}
+function renderHousehold(d){
+  const hh=d.openup.household;
+  const top=Object.entries(hh).sort((a,b)=>b[1]-a[1])[0];
+  $("#hhInsight").innerHTML=`전체 결제 중 <b>${top[1]}%</b>는 <b>${top[0]}</b> 고객이 결제했어요`;
+  make("household",{type:"bar",data:{labels:Object.keys(hh),
+    datasets:[{data:Object.values(hh),
+      backgroundColor:Object.keys(hh).map(k=>k===top[0]?"#f778ba":"#58a6ff"),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>c.raw+"%"}}},
+      scales:{y:{grid:{color:"#20262f"},ticks:{callback:v=>v+"%"}},x:{ticks:{font:{size:10}}}}}});
+}
+function renderMix(d){
+  const g=d.openup.gender, wh=d.openup.weekdayHoliday;
+  const topG=g["여성"]>=g["남성"]?"여성":"남성", topW=wh["평일"]>=wh["휴일"]?"평일":"휴일";
+  $("#mixInsight").innerHTML=
+    `<b>${Math.max(g["남성"],g["여성"]).toFixed(0)}%</b>는 <b>${topG}</b> · <b>${Math.max(wh["평일"],wh["휴일"])}%</b>는 <b>${topW}</b>에 결제했어요`;
+  make("mixBar",{type:"bar",data:{labels:["남성","여성","평일","휴일"],
+    datasets:[{data:[g["남성"],g["여성"],wh["평일"],wh["휴일"]],
+      backgroundColor:["#58a6ff","#f778ba","#3fb950","#d29922"],borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>c.raw+"%"}}},
+      scales:{y:{grid:{color:"#20262f"},ticks:{callback:v=>v+"%"},max:100}}}});
+}
+
+function renderTrend(d){
+  $("#trendHint").textContent = curGu + " · 매출(선) + 개업·폐업(막대)";
+  const t = d.trend;
+  make("trend",{type:"bar",data:{labels:t.map(x=>x.ym),
+    datasets:[
+      {type:"bar",label:"개업",data:t.map(x=>x.open),backgroundColor:"#3fb950cc",borderRadius:3,yAxisID:"y1",order:2},
+      {type:"bar",label:"폐업",data:t.map(x=>x.close),backgroundColor:"#f85149cc",borderRadius:3,yAxisID:"y1",order:2},
+      {type:"line",label:"월매출(억)",data:t.map(x=>x.sales),borderColor:"#f778ba",
+       backgroundColor:"#f778ba22",fill:true,tension:.3,pointRadius:2,yAxisID:"y",order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:"bottom",labels:{font:{size:11},boxWidth:12}}},
+      scales:{
+        y:{position:"left",grid:{color:"#20262f"},title:{display:true,text:"매출(억)"}},
+        y1:{position:"right",grid:{display:false},title:{display:true,text:"개·폐업(건)"}},
+        x:{ticks:{font:{size:10}}}}}});
+}
+
+function renderBrands(){
+  const B = DATA.brands;
+  $("#brandHint").textContent = `부산 전체 ${fmt(B.totalStores)}개 중 · 프랜차이즈 ${B.franchisePct}%` + (B.isLive?" · 실데이터":"");
+  make("brands",{type:"bar",data:{labels:B.list.map(b=>b.name),
+    datasets:[{data:B.list.map(b=>b.count),
+      backgroundColor:B.list.map(b=>b.cat.includes("치킨")?"#d29922":"#a371f7"),borderRadius:4}]},
+    options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>`${fmt(c.raw)}개 · ${B.list[c.dataIndex].cat}`}}},
+      scales:{x:{grid:{color:"#20262f"}},y:{ticks:{font:{size:10}}}}}});
+}
+
+function renderHour(){
+  make("hour",{type:"line",data:{labels:DATA.hour.map(h=>h.hour+"시"),
+    datasets:[{data:DATA.hour.map(h=>h.weight),borderColor:"#d29922",
+      backgroundColor:"#d2992233",fill:true,tension:.35,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxRotation:0}},
+        y:{grid:{color:"#20262f"},title:{display:true,text:"상대 매출강도"}}}}});
+}
+
+function renderWeekday(){
+  make("weekday",{type:"bar",data:{labels:DATA.weekday.map(w=>w.day),
+    datasets:[{data:DATA.weekday.map(w=>w.weight),
+      backgroundColor:DATA.weekday.map(w=>["금","토"].includes(w.day)?"#f778ba":"#a371f7"),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},scales:{y:{grid:{color:"#20262f"}}}}});
+}
+
+function renderTable(){
+  const s=[...DATA.districts].sort((a,b)=>b.kpi.salesPerStoreMan-a.kpi.salesPerStoreMan);
+  $("#tbl").innerHTML = `<thead><tr>
+    <th>순위</th><th>구</th><th>점포수</th><th>월매출(억)</th>
+    <th>점포당 월매출(만원)</th><th>점포당 배후세대</th><th>점포당 유동인구</th>
+    <th>배달(건/월)</th><th>20·30대 비중</th></tr></thead><tbody>` +
+    s.map((d,i)=>`<tr style="${d.gu===curGu?'background:#1c2330':''}">
+      <td class="rank">${i+1}</td><td>${d.gu}</td><td>${fmt(d.stores)}</td>
+      <td>${d.monthlySales.toFixed(1)}</td><td>${fmt(d.kpi.salesPerStoreMan)}</td>
+      <td>${fmt(d.kpi.aptPerStore)}</td><td>${fmt(d.kpi.floatPerStore)}</td>
+      <td>${fmt(d.delivery)}</td>
+      <td><span class="pill" style="background:#58a6ff22;color:#58a6ff">${(d.ageMixPct["20대"]+d.ageMixPct["30대"]).toFixed(0)}%</span></td>
+    </tr>`).join("") + "</tbody>";
+}
+
+// ---- 상가 매매 실거래가 카드 ----
+let TRADE = { key: "", data: null };
+async function renderTradeCard(){
+  const key = curGu;
+  if (TRADE.key !== key) {
+    TRADE = { key, data: null };
+    $("#tradeInsight").textContent = "실거래 조회 중...";
+    $("#tradeTbl").innerHTML = "";
+    try {
+      const j = await (await fetch(`/api/trade?gu=${encodeURIComponent(curGu)}`)).json();
+      if (curGu !== key) return;
+      TRADE = { key, data: j };
+    } catch(e) { TRADE = { key, data: { source:"NONE", deals: [] } }; }
+  }
+  const j = TRADE.data;
+  if (!j || j.source !== "LIVE") {
+    $("#tradeInsight").textContent = "실거래 데이터 없음 (API 키 또는 활용신청 확인)";
+    return;
+  }
+  $("#tradeHint").textContent = `${curGu} · 국토부 실거래 · 최근 6개월 ${j.count}건`;
+  const dongTop = Object.entries(j.avgByDong).filter(([,v])=>v.n>=2)
+    .sort((a,b)=>b[1].avgPerM2-a[1].avgPerM2).slice(0,4);
+  $("#tradeInsight").innerHTML = dongTop.length
+    ? "동별 평균 ㎡당 매매가: " + dongTop.map(([d,v])=>`<b>${d}</b> ${fmt(v.avgPerM2)}만원(${v.n}건)`).join(" · ")
+    : "최근 6개월 거래가 적어 동별 평균 생략";
+  $("#tradeTbl").innerHTML = `<thead><tr><th>거래일</th><th>동</th><th>용도</th><th>층</th>
+    <th>연면적(㎡)</th><th>금액</th><th>㎡당(만원)</th><th>구분</th></tr></thead><tbody>`
+    + j.deals.slice(0,60).map(d=>`<tr style="${d.canceled?'opacity:.4;text-decoration:line-through':''}">
+      <td>${d.ym}.${d.day}</td><td>${d.dong}</td><td>${d.use}</td><td>${d.floor||"-"}</td>
+      <td>${fmt(d.areaM2)}</td>
+      <td>${d.amountMan>=10000 ? (d.amountMan/10000).toFixed(1)+"억" : fmt(d.amountMan)+"만"}</td>
+      <td>${d.perM2?fmt(d.perM2):"-"}</td><td>${d.dealType||""}${d.canceled?" (해제)":""}</td>
+    </tr>`).join("") + "</tbody>";
+}
+
+// ---- 이벤트 / 자동갱신 ----
+let timer=null;
+$("#storeSearch").addEventListener("input",drawStores);
+$("#storeDong").addEventListener("change",drawStores);
+$("#storeSort").addEventListener("change",drawStores);
+$("#guSelect").addEventListener("change",e=>{curGu=e.target.value;render();});
+$("#refresh").addEventListener("click",load);
+$("#mode").addEventListener("change",e=>{
+  clearInterval(timer);
+  const v=e.target.value;
+  if(v==="off")return;
+  const ms = v==="weekly" ? 7*24*3600*1000 : (+v)*1000;
+  timer=setInterval(load,ms);
+});
+
+load();
+</script>
+</div>
+</body>
+</html>

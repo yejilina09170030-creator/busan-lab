@@ -1,0 +1,16 @@
+# 개인 키가 들어있는 설정 — 절대 공유/업로드 금지 (배포 시 환경변수 DATA_GO_KR 로 넣음)
+config.json
+
+# 설치물 (호스트가 자체 설치/제공)
+node_modules/
+node/
+
+# 백업·임시·개발용
+*.bak
+_preview_static.js
+.claude/
+apt_cache.json
+
+# 배포에 필요한 데이터 파일은 포함됨(무시하지 않음):
+#   snapshot_full.json, apt_data.json, rest_data.json,
+#   server.js, package.json, public/, 부산 카페 상권분석 대시보드 (공유용).html

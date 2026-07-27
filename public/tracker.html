@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>개폐업 트래커 · 부산 상권랩</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3240;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#58a6ff; --accent2:#f778ba;
+    --up:#3fb950; --down:#f85149; --warn:#d29922;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);display:flex;
+    font-family:"Pretendard","Segoe UI",-apple-system,Roboto,"Malgun Gothic",sans-serif;}
+  .side{width:210px;flex-shrink:0;position:sticky;top:0;height:100vh;
+    background:#0a0e14;border-right:1px solid var(--line);padding:20px 14px;
+    display:flex;flex-direction:column;gap:4px}
+  .side .logo{font-size:16px;font-weight:800;padding:6px 10px 18px;letter-spacing:-.3px}
+  .side .logo span{color:var(--accent)}
+  .side .ngroup{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;padding:14px 10px 6px}
+  .side a{display:block;padding:9px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:13px}
+  .side a:hover{background:var(--panel2)}
+  .side a.on{background:var(--panel2);color:var(--accent);font-weight:600}
+  .side .foot{margin-top:auto;font-size:10px;color:var(--sub);padding:10px;line-height:1.6}
+  .content{flex:1;min-width:0}
+  header{padding:16px 24px;border-bottom:1px solid var(--line);background:#11161d;
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  h1{font-size:16px;margin:0;font-weight:700}
+  h1 span{color:var(--accent)}
+  main{padding:20px 24px;max-width:1300px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .label{font-size:11px;color:var(--sub);margin-bottom:6px}
+  .kpi .val{font-size:22px;font-weight:700}
+  .kpi .val small{font-size:12px;color:var(--sub);font-weight:400}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h3{margin:0 0 4px;font-size:13px;font-weight:600}
+  .card .sub{font-size:11px;color:var(--sub);margin-bottom:12px}
+  .col-6{grid-column:span 6}.col-12{grid-column:span 12}
+  .chart-wrap{position:relative;height:260px}
+  .notice{background:#1c2a1e;border:1px solid var(--up);border-radius:12px;
+    padding:16px 20px;font-size:13px;line-height:1.8;margin-bottom:18px}
+  .notice.wait{background:#2a2418;border-color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-size:11px;color:var(--sub);text-align:left;border-bottom:1px solid var(--line);padding:7px 8px;position:sticky;top:0;background:var(--panel)}
+  td{padding:8px;border-bottom:1px solid #20262f}
+  .tbl-scroll{max-height:420px;overflow:auto}
+  .tag-new{color:var(--up);font-weight:700}
+  .tag-del{color:var(--down);font-weight:700}
+  select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px}
+  @media(max-width:1000px){.col-6{grid-column:span 12}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<nav class="side">
+  <div class="logo">☕ 부산 <span>상권랩</span></div>
+  <div class="ngroup">분석</div>
+  <a href="/">📊 종합 대시보드</a>
+  <a href="/map.html">🗺️ 입지 · 영토 지도</a>
+  <div class="ngroup">모니터링</div>
+  <a href="/tracker.html" class="on">📈 개폐업 트래커</a>
+  <div class="ngroup">운영</div>
+  <a href="/sales.html">💰 가게 매출분석</a>
+  <div class="foot">☕ 카페 상권 전용<br>소상공인 상가정보 실데이터</div>
+</nav>
+<div class="content">
+<header>
+  <h1>📈 <span>개폐업</span> 트래커</h1>
+  <select id="guFilter"><option value="">전체 구</option></select>
+</header>
+<main>
+  <div id="app">로딩...</div>
+</main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => (+n).toLocaleString("ko-KR");
+Chart.defaults.color = "#8b98a9"; Chart.defaults.borderColor = "#2a3240";
+Chart.defaults.font.family = "Pretendard, Segoe UI, Malgun Gothic, sans-serif";
+let T = null, guF = "";
+
+async function load() {
+  T = await (await fetch("/api/tracker?cat=cafe")).json();
+  if (!T.snapshots || !T.snapshots.length) {
+    $("#app").innerHTML = `<div class="notice wait">아직 스냅샷이 없습니다.
+      대시보드에서 데이터가 한 번 수집되면(주소창 <b>?refresh=1</b>) 기준 스냅샷이 저장됩니다.</div>`;
+    return;
+  }
+  const gus = [...new Set(T.recentOpens.map(s => s.gu))].sort();
+  gus.forEach(g => { const o = document.createElement("option"); o.value = o.textContent = g; $("#guFilter").appendChild(o); });
+  render();
+}
+
+function render() {
+  const f = arr => guF ? arr.filter(s => s.gu === guF) : arr;
+  const opens = f(T.recentOpens || []);
+  const hasDiff = !!T.added;
+
+  let html = `<div class="kpis">
+    <div class="kpi"><div class="label">추적 중인 카페</div><div class="val">${fmt(T.totalStores)} <small>개</small></div></div>
+    <div class="kpi"><div class="label">스냅샷 수</div><div class="val">${T.snapshots.length} <small>회</small></div></div>
+    <div class="kpi"><div class="label">최근 수집일</div><div class="val" style="font-size:17px">${T.latestDate}</div></div>
+    <div class="kpi"><div class="label">최근 12개월 신규 등록</div><div class="val">${fmt((T.recentOpens||[]).length)}<small>+ 개</small></div></div>
+  </div>`;
+
+  html += hasDiff
+    ? `<div class="notice">✅ <b>${T.prevDate} → ${T.latestDate}</b> 비교:
+       신규 <b class="tag-new">+${T.added.length}</b> · 소멸(폐업 추정) <b class="tag-del">−${T.removed.length}</b></div>`
+    : `<div class="notice wait">⏳ 기준 스냅샷(${T.latestDate}) 저장 완료.
+       <b>다음 주간 수집부터</b> "이번 주 새로 생긴 곳 / 사라진 곳"이 자동으로 여기 표시됩니다.
+       (즉시 재수집: 대시보드에서 <b>?refresh=1</b>)</div>`;
+
+  html += `<div class="grid">
+    <div class="card col-12">
+      <h3>월별 신규 등록 추이</h3><div class="sub">상가DB 등록년월 기준 · 2023년 이후</div>
+      <div class="chart-wrap"><canvas id="cm"></canvas></div>
+    </div>`;
+
+  if (hasDiff) {
+    const add = f(T.added), rem = f(T.removed);
+    html += `
+    <div class="card col-6">
+      <h3 class="tag-new">🟢 신규 오픈 (+${add.length})</h3><div class="sub">${T.prevDate} 이후 새로 등장</div>
+      <div class="tbl-scroll"><table><tr><th>매장명</th><th>구</th><th>동</th></tr>
+      ${add.map(s=>`<tr><td>${s.nm}</td><td>${s.gu}</td><td>${s.dong}</td></tr>`).join("")}</table></div>
+    </div>
+    <div class="card col-6">
+      <h3 class="tag-del">🔴 소멸 · 폐업 추정 (−${rem.length})</h3><div class="sub">명부에서 사라짐</div>
+      <div class="tbl-scroll"><table><tr><th>매장명</th><th>구</th><th>동</th></tr>
+      ${rem.map(s=>`<tr><td>${s.nm}</td><td>${s.gu}</td><td>${s.dong}</td></tr>`).join("")}</table></div>
+    </div>`;
+  }
+
+  html += `
+    <div class="card col-12">
+      <h3>🆕 최근 신규 오픈 매장 ${guF ? "· " + guF : "· 부산 전체"}</h3>
+      <div class="sub">최근 12개월 등록 기준 · 최신순</div>
+      <div class="tbl-scroll"><table><tr><th>오픈</th><th>매장명</th><th>업종</th><th>구</th><th>동</th></tr>
+      ${opens.map(s=>`<tr><td class="tag-new">${s.ym}</td><td>${s.nm}</td>
+        <td>${s.cat==="chicken"?"🍗 치킨":s.cat==="cafe"?"☕ 카페":"🍺 호프"}</td><td>${s.gu}</td><td>${s.dong}</td></tr>`).join("")}
+      </table></div>
+    </div>
+  </div>`;
+
+  $("#app").innerHTML = html;
+
+  const months = Object.keys(T.opensByMonth).sort();
+  new Chart($("#cm"), { type: "bar",
+    data: { labels: months,
+      datasets: [{ data: months.map(m => T.opensByMonth[m]), backgroundColor: "#3fb950", borderRadius: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { grid: { color: "#20262f" }, title: { display: true, text: "신규 등록(개)" } },
+        x: { ticks: { font: { size: 9 }, maxRotation: 60 } } } } });
+}
+
+$("#guFilter").addEventListener("change", e => { guF = e.target.value; render(); });
+load();
+</script>
+</body>
+</html>

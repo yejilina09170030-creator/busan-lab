@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>입지·영토 지도 · 부산 상권랩</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3240;
+    --txt:#e6edf3; --sub:#8b98a9; --accent:#58a6ff; --accent2:#f778ba;
+    --up:#3fb950; --warn:#d29922;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);display:flex;
+    font-family:"Pretendard","Segoe UI",-apple-system,Roboto,"Malgun Gothic",sans-serif;}
+  .side{width:210px;flex-shrink:0;position:sticky;top:0;height:100vh;
+    background:#0a0e14;border-right:1px solid var(--line);padding:20px 14px;
+    display:flex;flex-direction:column;gap:4px}
+  .side .logo{font-size:16px;font-weight:800;padding:6px 10px 18px;letter-spacing:-.3px}
+  .side .logo span{color:var(--accent)}
+  .side .ngroup{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;padding:14px 10px 6px}
+  .side a{display:block;padding:9px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:13px}
+  .side a:hover{background:var(--panel2)}
+  .side a.on{background:var(--panel2);color:var(--accent);font-weight:600}
+  .side .foot{margin-top:auto;font-size:10px;color:var(--sub);padding:10px;line-height:1.6}
+  .content{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;gap:12px;flex-wrap:wrap;background:#11161d}
+  h1{font-size:16px;margin:0;font-weight:700}
+  h1 span{color:var(--accent)}
+  select,button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  .toggle{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+  .toggle button{font-size:12px}
+  .toggle button.on{background:var(--accent);color:#001;border-color:var(--accent);font-weight:700}
+  #map{flex:1}
+  .leaflet-container{background:#1a222e}
+  .status{font-size:11px;color:var(--sub)}
+  /* 지도 위 패널 */
+  .legend{position:absolute;bottom:18px;left:18px;z-index:1000;background:#161b22ee;
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:11.5px;max-width:220px}
+  .legend h4{margin:0 0 8px;font-size:12px}
+  .lrow{display:flex;align-items:center;gap:7px;padding:2px 0}
+  .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1.5px solid #fff3}
+  .reco-panel{position:absolute;top:14px;right:14px;z-index:1000;background:#161b22ee;
+    border:1px solid var(--line);border-radius:10px;padding:14px;font-size:12px;width:250px;display:none}
+  .reco-panel h4{margin:0 0 8px;font-size:13px}
+  .reco-item{padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:7px;cursor:pointer}
+  .reco-item:hover{border-color:var(--accent)}
+  .reco-item b{color:var(--up)}
+  .reco-item .d{font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.5}
+  .popname{font-weight:700;font-size:13px}
+  .popsub{font-size:11px;color:#555}
+  /* 🤖 분석 도우미 */
+  .ai-panel{position:absolute;bottom:18px;right:14px;z-index:1000;background:#161b22f5;
+    border:1px solid var(--accent);border-radius:12px;padding:14px 16px;font-size:12px;
+    width:310px;max-height:48vh;overflow-y:auto;display:none;line-height:1.75;
+    box-shadow:0 6px 24px #0009}
+  .ai-panel h4{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .ai-panel .x{cursor:pointer;color:var(--sub);font-size:15px;padding:0 4px}
+  .ai-panel .x:hover{color:var(--txt)}
+  .ai-panel b{color:var(--accent)}
+  .ai-panel .num{color:var(--accent2);font-weight:700}
+  .ai-panel .tip{margin-top:10px;padding:9px 11px;background:#1c2a1e;border:1px solid #2a4a2e;
+    border-radius:8px;font-size:11.5px}
+  .ai-panel .tip b{color:var(--up)}
+</style>
+</head>
+<body>
+<nav class="side">
+  <div class="logo">☕ 부산 <span>상권랩</span></div>
+  <div class="ngroup">분석</div>
+  <a href="/">📊 종합 대시보드</a>
+  <a href="/map.html" class="on">🗺️ 입지 · 영토 지도</a>
+  <div class="ngroup">모니터링</div>
+  <a href="/tracker.html">📈 개폐업 트래커</a>
+  <div class="ngroup">운영</div>
+  <a href="/sales.html">💰 가게 매출분석</a>
+  <div class="foot">☕ 카페 상권 전용<br>소상공인 상가정보 실데이터</div>
+</nav>
+<div class="content">
+  <header>
+    <h1>🗺️ <span>입지 · 영토</span> 지도</h1>
+    <select id="guSel"></select>
+    <span style="font-size:12px;color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:6px 10px">☕ 카페 전용</span>
+    <span class="status" id="status">로딩...</span>
+    <div class="toggle">
+      <button id="btnBrand" class="on">🏷️ 브랜드 영토</button>
+      <button id="btnHeat">🔥 경쟁 히트맵</button>
+      <button id="btnReco">⭐ 추천 입지</button>
+      <button id="btnApt">🏠 주거 밀집</button>
+      <button id="btnFlow">🚶 유동 추정</button>
+      <button id="btnFac">🏢 집객시설</button>
+      <button id="btnZone">🏙️ 상업·주거</button>
+    </div>
+  </header>
+  <div id="map" style="position:relative"></div>
+  <div class="legend" id="legend"></div>
+  <div class="reco-panel" id="recoPanel"></div>
+  <div class="ai-panel" id="aiPanel"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const GUS = ["중구","서구","동구","영도구","부산진구","동래구","남구","북구",
+  "해운대구","사하구","금정구","강서구","연제구","수영구","사상구","사상구","기장군"];
+const GU_CENTER = { "강서구":[35.16,128.93],"부산진구":[35.163,129.053],"해운대구":[35.17,129.13] };
+
+// 브랜드 색상 (치킨 주요 브랜드)
+const BRAND_COLORS = {
+  "BBQ":"#e5484d","BHC":"#ff8a00","교촌치킨":"#c8a24b","처갓집양념치킨":"#9d5bd2",
+  "굽네치킨":"#30a46c","네네치킨":"#e93d82","푸라닭":"#f5d90a","60계치킨":"#0091ff",
+  "호식이두마리":"#f76b15","자담치킨":"#3dd68c","멕시카나":"#d6409f","노랑통닭":"#ffe629",
+  "지코바":"#70e1c8","페리카나":"#eb8e90",
+  "역전할머니맥주":"#ff8a00","투다리":"#e5484d","생활맥주":"#0091ff","금별맥주":"#f5d90a",
+  "봉구비어":"#30a46c","치어스":"#9d5bd2","와바(WA BAR)":"#e93d82","청담이상":"#3dd68c","크라운호프":"#c8a24b",
+  "메가커피":"#f5d90a","컴포즈커피":"#9d5bd2","이디야":"#0091ff","빽다방":"#30a46c",
+  "스타벅스":"#00704a","더벤티":"#22c1dd","투썸플레이스":"#e5484d","매머드커피":"#ff8a00",
+  "공차":"#d6409f","할리스":"#e93d82","파스쿠찌":"#3dd68c","폴바셋":"#c8a24b",
+};
+const INDIE = "#5a6b80";
+
+let map, layerDots = null, layerHeat = null, layerReco = null, layerApt = null, layerFlow = null, layerFac = null, layerZone = null;
+let curGu = "강서구", curCat = "cafe";
+let show = { brand: true, heat: false, reco: false, apt: false, flow: false, fac: false, zone: false };
+let CACHE = {};   // "gu|cat" → items
+let APT_CACHE = {};   // gu → /api/apt 응답
+let FAC_CACHE = {};   // gu → /api/facilities 응답
+const FAC_COLORS = { "병원·의원":"#f85149", "약국":"#ff9d5d", "카페":"#d29922", "편의점":"#3fb950", "학원":"#58a6ff" };
+
+// 동별 매장 좌표 평균 → 동 중심 근사
+function dongCentroids(stores) {
+  const acc = {};
+  for (const s of stores) {
+    if (!s.dong) continue;
+    if (!acc[s.dong]) acc[s.dong] = { lat: 0, lon: 0, n: 0 };
+    acc[s.dong].lat += s.lat; acc[s.dong].lon += s.lon; acc[s.dong].n++;
+  }
+  const out = {};
+  for (const d in acc) out[d] = { lat: acc[d].lat / acc[d].n, lon: acc[d].lon / acc[d].n, n: acc[d].n };
+  return out;
+}
+// 아파트 동명(법정동)이 행정동과 다를 때 유연 매칭: "명지동" → 명지1동+명지2동 평균
+function matchDong(centroids, dongName) {
+  if (centroids[dongName]) return centroids[dongName];
+  const stem = dongName.replace(/동$/, "").replace(/\d+$/, "");
+  const hits = Object.keys(centroids).filter(k => k.replace(/\d*동$/, "") === stem);
+  if (!hits.length) return null;
+  let lat = 0, lon = 0;
+  hits.forEach(k => { lat += centroids[k].lat; lon += centroids[k].lon; });
+  return { lat: lat / hits.length, lon: lon / hits.length };
+}
+
+function fmtMan(n){
+  if(!n) return "?";
+  if(n>=10000){const e=Math.floor(n/10000),r=n%10000;return r?e+"억 "+r.toLocaleString()+"만":e+"억";}
+  return n.toLocaleString()+"만";
+}
+function dist(a, b) {  // meter (haversine 근사)
+  const dx = (a.lon - b.lon) * 88800 * Math.cos(a.lat * Math.PI / 180);
+  const dy = (a.lat - b.lat) * 111000;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+async function getStores(gu, cat) {
+  const k = gu + "|" + cat;
+  if (!CACHE[k]) {
+    const j = await (await fetch(`/api/stores?gu=${encodeURIComponent(gu)}&cat=${cat}`)).json();
+    CACHE[k] = (j.items || []).filter(s => s.lat && s.lon);
+  }
+  return CACHE[k];
+}
+
+async function render() {
+  $("#status").textContent = "매장 로딩...";
+  const items = await getStores(curGu, curCat);
+  const OTHERS = { chicken: ["hof","cafe"], hof: ["chicken","cafe"], cafe: ["chicken","hof"] };
+  const oc = OTHERS[curCat] || ["chicken","hof"];
+  const others = (await getStores(curGu, oc[0])).concat(await getStores(curGu, oc[1]));
+  $("#status").textContent = `${curGu} ${items.length}개 매장 (실좌표)`;
+  LAST = { items, others, picks: [], apt: null, fac: null, brandCnt: {}, cents: {} };
+
+  [layerDots, layerHeat, layerReco, layerApt, layerFlow, layerFac, layerZone].forEach(l => l && map.removeLayer(l));
+  layerDots = layerHeat = layerReco = layerApt = layerFlow = layerFac = layerZone = null;
+
+  // 지도 이동
+  if (items.length) {
+    const lats = items.map(s => s.lat), lons = items.map(s => s.lon);
+    map.fitBounds([[Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]], { padding: [30, 30] });
+  }
+
+  // 🔥 경쟁 히트맵: 매장마다 반경 300m 반투명 원 → 겹칠수록 진해짐
+  if (show.heat) {
+    layerHeat = L.layerGroup(items.map(s =>
+      L.circle([s.lat, s.lon], { radius: 300, stroke: false, fillColor: "#e5484d", fillOpacity: 0.13 })
+    )).addTo(map);
+  }
+
+  // 🏷️ 매장 점 (브랜드 색)
+  const brandCnt = {};
+  layerDots = L.layerGroup(items.map(s => {
+    const c = show.brand && s.brand ? (BRAND_COLORS[s.brand] || "#ffffff") : (s.brand ? "#c0cad6" : INDIE);
+    if (s.brand) brandCnt[s.brand] = (brandCnt[s.brand] || 0) + 1;
+    return L.circleMarker([s.lat, s.lon], {
+      radius: s.brand ? 7 : 4.5, fillColor: c, fillOpacity: 0.92,
+      color: "#10151c", weight: 1.5,
+    }).bindTooltip(s.name, { direction: "top", offset: [0, -8] })
+      .bindPopup(`<div class="popname">${s.name}</div>
+      <div class="popsub">${s.brand ? "🏷️ " + s.brand : "개인·기타"} · ${s.dong}${s.ym ? " · " + (s.year >= 2023 ? s.ym + " 오픈" : "'22 이전") : ""}</div>
+      ${s.bld ? `<div class="popsub">🏢 ${s.bld}</div>` : ""}
+      ${s.addr ? `<div class="popsub">📍 ${s.addr}</div>` : ""}
+      <div class="popsub">💰 추정 월매출 <b>${fmtMan(s.min)} ~ ${fmtMan(s.max)}원</b> <span style="color:#999">(추정치)</span></div>
+      <a href="https://map.kakao.com/link/map/${encodeURIComponent(s.name)},${s.lat},${s.lon}" target="_blank"
+        style="font-size:11px;font-weight:700">카카오맵에서 보기 ↗</a>`);
+  })).addTo(map);
+
+  // 🚶 유동 추정: 동별 상권활력(치킨+호프 매장 밀도) — 진짜 유동인구 API 연결 전 프록시
+  const allStores = items.concat(others);
+  const cents = dongCentroids(allStores);
+  if (show.flow) {
+    layerFlow = L.layerGroup(Object.entries(cents).map(([dong, c]) =>
+      L.circle([c.lat, c.lon], {
+        radius: 200 + Math.sqrt(c.n) * 110, stroke: true, color: "#22c1dd", weight: 1,
+        fillColor: "#22c1dd", fillOpacity: 0.16,
+      }).bindPopup(`<div class="popname">🚶 ${dong}</div>
+        <div class="popsub">상권활력 ${c.n} (주변 매장 밀도 기반 유동 추정)<br>정확한 유동인구는 통신사 데이터 필요</div>`)
+    )).addTo(map);
+  }
+
+  // 🏠 주거 밀집: 아파트 단지 (국토부 K-apt 실데이터) — 동 중심 근사 배치
+  let aptData = null;
+  if (show.apt) {
+    if (!APT_CACHE[curGu]) {
+      $("#status").textContent = "아파트 단지 로딩...";
+      APT_CACHE[curGu] = await (await fetch(`/api/apt?gu=${encodeURIComponent(curGu)}`)).json();
+    }
+    aptData = APT_CACHE[curGu];
+    if (aptData.source === "LIVE") {
+      layerApt = L.layerGroup(Object.entries(aptData.byDong).map(([dong, d]) => {
+        const c = matchDong(cents, dong);
+        if (!c) return null;
+        const r = Math.min(1200, 160 + Math.sqrt(d.units || d.count * 300) * 11);
+        const list = d.names.slice(0, 8).map(x =>
+          `${x.name} · <b>${(x.units || 0).toLocaleString()}세대</b>${x.built ? ` ('${x.built.slice(2)}년)` : ""}`).join("<br>");
+        return L.circle([c.lat, c.lon], {
+          radius: r, stroke: true, color: "#a371f7", weight: 1.5,
+          fillColor: "#a371f7", fillOpacity: 0.18,
+        }).bindPopup(`<div class="popname">🏠 ${dong} · ${d.count}단지 · ${(d.units || 0).toLocaleString()}세대</div>
+          <div class="popsub">${list}${d.names.length > 8 ? "<br>외 " + (d.names.length - 8) + "단지" : ""}<br>
+          <i>동 중심 근사 위치 · K-apt 실데이터</i></div>`, { maxWidth: 320 });
+      }).filter(Boolean)).addTo(map);
+      $("#status").textContent = `${curGu} ${items.length}개 매장 · 아파트 ${aptData.total}단지 ${(aptData.totalUnits || 0).toLocaleString()}세대`;
+    } else {
+      $("#status").textContent = `${curGu} ${items.length}개 매장 (아파트API 대기: ${aptData.note || ""})`;
+    }
+  }
+
+  // 🏢 집객시설: 병원·약국·카페·편의점·학원 (실좌표)
+  let facData = null;
+  if (show.fac) {
+    if (!FAC_CACHE[curGu]) {
+      $("#status").textContent = "집객시설 로딩 (최초 1회, 최대 1분)...";
+      FAC_CACHE[curGu] = await (await fetch(`/api/facilities?gu=${encodeURIComponent(curGu)}`)).json();
+    }
+    facData = FAC_CACHE[curGu];
+    if (facData.source === "LIVE") {
+      const marks = [];
+      for (const g in facData.groups) {
+        for (const f of facData.groups[g].items) {
+          if (!f.lat || !f.lon) continue;
+          marks.push(L.circleMarker([f.lat, f.lon], {
+            radius: 3, fillColor: FAC_COLORS[g] || "#fff", fillOpacity: 0.85,
+            color: "#10151c", weight: 0.5,
+          }).bindPopup(`<div class="popname">${f.name}</div><div class="popsub">${g} · ${f.dong}</div>`));
+        }
+      }
+      layerFac = L.layerGroup(marks).addTo(map);
+    }
+  }
+
+  // 🏙️ 상업·주거 구분 — 매장·시설(상업 지표) vs 아파트 세대수(주거 지표)로 동별 성향 판정
+  if (show.zone) {
+    if (!APT_CACHE[curGu]) {
+      $("#status").textContent = "아파트 단지·세대수 로딩 (최초 1회, 최대 1~2분)...";
+      APT_CACHE[curGu] = await (await fetch(`/api/apt?gu=${encodeURIComponent(curGu)}`)).json();
+    }
+    if (!FAC_CACHE[curGu]) {
+      $("#status").textContent = "집객시설 로딩 (최초 1회, 최대 1분)...";
+      FAC_CACHE[curGu] = await (await fetch(`/api/facilities?gu=${encodeURIComponent(curGu)}`)).json();
+    }
+    const apt = APT_CACHE[curGu], fac = FAC_CACHE[curGu];
+    const comm = {}, resid = {};
+    for (const s of allStores) if (s.dong) comm[s.dong] = (comm[s.dong] || 0) + 1;
+    if (fac.source === "LIVE")
+      for (const g in fac.groups) for (const f of fac.groups[g].items)
+        if (f.dong) comm[f.dong] = (comm[f.dong] || 0) + 1;
+    if (apt.source === "LIVE")
+      for (const [ad, d] of Object.entries(apt.byDong)) {
+        const stem = ad.replace(/동$/, "").replace(/\d+$/, "");
+        const keys = Object.keys(cents).filter(k => k.replace(/\d*동$/, "") === stem);
+        const targets = keys.length ? keys : (cents[ad] ? [ad] : []);
+        for (const k of targets) resid[k] = (resid[k] || 0) + (d.units || 0) / targets.length;
+      }
+    const maxC = Math.max(1, ...Object.values(comm));
+    const maxR = Math.max(1, ...Object.values(resid));
+    const zCnt = { "상업": 0, "주거": 0, "혼합": 0 };
+    const marks = [];
+    for (const dong in cents) {
+      const cN = (comm[dong] || 0) / maxC, rN = (resid[dong] || 0) / maxR;
+      const cls = cN - rN > 0.2 ? "상업" : rN - cN > 0.2 ? "주거" : "혼합";
+      zCnt[cls]++;
+      const color = cls === "상업" ? "#ff8a00" : cls === "주거" ? "#a371f7" : "#22c1dd";
+      marks.push(L.circle([cents[dong].lat, cents[dong].lon], {
+        radius: 260 + Math.max(cN, rN) * 550, color, weight: 2,
+        fillColor: color, fillOpacity: 0.22, dashArray: cls === "혼합" ? "5 5" : null,
+      }).bindPopup(`<div class="popname">🏙️ ${dong} — <b>${cls}</b> 성향</div>
+        <div class="popsub">상업 지표: 매장·시설 ${comm[dong] || 0}개<br>
+        주거 지표: 아파트 ${Math.round(resid[dong] || 0).toLocaleString()}세대<br>
+        <i>보유 데이터 기반 추정 구분</i></div>`));
+    }
+    layerZone = L.layerGroup(marks).addTo(map);
+    LAST.zone = { comm, resid, zCnt };
+    if (!show.apt) $("#status").textContent =
+      `${curGu} ${items.length}개 매장 · 상업 ${zCnt["상업"]}/주거 ${zCnt["주거"]}/혼합 ${zCnt["혼합"]}개 동`;
+  }
+
+  LAST.brandCnt = brandCnt; LAST.apt = aptData; LAST.fac = facData; LAST.cents = cents;
+
+  // ⭐ 추천 입지: 격자 스코어링
+  const recoPanel = $("#recoPanel");
+  if (show.reco && items.length) {
+    const all = items.concat(others);   // 상권 활력 = 치킨+호프 전체 밀도
+    const lats = all.map(s => s.lat), lons = all.map(s => s.lon);
+    const step = 0.0025;   // ≈ 275m
+    const cands = [];
+    for (let la = Math.min(...lats); la <= Math.max(...lats); la += step) {
+      for (let lo = Math.min(...lons); lo <= Math.max(...lons); lo += step / Math.cos(la * Math.PI / 180) * 1.2) {
+        const p = { lat: la, lon: lo };
+        let comp500 = 0, act800 = 0;
+        for (const s of items) if (dist(p, s) <= 500) comp500++;
+        for (const s of all) if (dist(p, s) <= 800) act800++;
+        if (act800 >= 6 && comp500 <= 1)
+          cands.push({ ...p, comp500, act800, score: Math.round(act800 * 10 / (1 + comp500 * 2)) });
+      }
+    }
+    cands.sort((a, b) => b.score - a.score);
+    const picks = [];
+    for (const c of cands) {
+      if (picks.every(p => dist(p, c) > 800)) picks.push(c);
+      if (picks.length >= 3) break;
+    }
+    LAST.picks = picks;
+    layerReco = L.layerGroup(picks.map((p, i) =>
+      L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "", html:
+        `<div style="background:#3fb950;color:#00230f;font-weight:800;border-radius:50%;width:30px;height:30px;
+         display:flex;align-items:center;justify-content:center;font-size:15px;border:2.5px solid #fff;
+         box-shadow:0 2px 8px #000a">${i + 1}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) })
+        .bindPopup(`<div class="popname">⭐ 추천 입지 ${i + 1}위 (점수 ${p.score})</div>
+          <div class="popsub">반경 500m 경쟁 ${p.comp500}개 · 800m 상권활력 ${p.act800}</div>`)
+    )).addTo(map);
+
+    recoPanel.style.display = "block";
+    recoPanel.innerHTML = "<h4>⭐ 추천 입지 TOP 3</h4>" + (picks.length ? picks.map((p, i) => `
+      <div class="reco-item" onclick="map.setView([${p.lat},${p.lon}],16)">
+        <b>${i + 1}위</b> · 점수 ${p.score}
+        <div class="d">반경 500m 내 경쟁 카페 ${p.comp500}개<br>주변 상권활력 ${p.act800} (주변 매장 800m)</div>
+      </div>`).join("") : "<div style='color:var(--sub)'>조건 만족 지점 없음</div>")
+      + `<div style="font-size:10px;color:var(--sub);margin-top:6px;line-height:1.5">
+         기준: 주변 상권은 활발한데(800m 내 6개↑)<br>같은 업종 경쟁이 적은(500m 내 1개↓) 지점</div>`;
+  } else recoPanel.style.display = "none";
+
+  // 범례
+  const top = Object.entries(brandCnt).sort((a, b) => b[1] - a[1]).slice(0, 9);
+  $("#legend").innerHTML = "<h4>브랜드 영토</h4>"
+    + top.map(([b, n]) => `<div class="lrow"><span class="dot" style="background:${BRAND_COLORS[b] || "#fff"}"></span>${b} <span style="color:var(--sub)">${n}</span></div>`).join("")
+    + `<div class="lrow"><span class="dot" style="background:${INDIE}"></span>개인·기타 <span style="color:var(--sub)">${items.filter(s => !s.brand).length}</span></div>`
+    + (show.heat ? `<div class="lrow" style="margin-top:6px"><span class="dot" style="background:#e5484d55;border-radius:3px"></span>붉을수록 경쟁 밀집</div>` : "")
+    + (show.apt ? `<div class="lrow"><span class="dot" style="background:#a371f755;border:1.5px solid #a371f7"></span>주거 밀집(아파트 단지)</div>` : "")
+    + (show.flow ? `<div class="lrow"><span class="dot" style="background:#22c1dd55;border:1.5px solid #22c1dd"></span>유동 추정(상권활력)</div>` : "")
+    + (show.zone ? `<div class="lrow"><span class="dot" style="background:#ff8a0055;border:1.5px solid #ff8a00"></span>상업 성향 동</div>
+       <div class="lrow"><span class="dot" style="background:#a371f755;border:1.5px solid #a371f7"></span>주거 성향 동</div>
+       <div class="lrow"><span class="dot" style="background:#22c1dd55;border:1.5px dashed #22c1dd"></span>혼합</div>` : "")
+    + (show.fac && facData && facData.source === "LIVE"
+      ? Object.entries(facData.groups).map(([g, d]) =>
+          `<div class="lrow"><span class="dot" style="background:${FAC_COLORS[g]};width:8px;height:8px"></span>${g} <span style="color:var(--sub)">${d.count}</span></div>`).join("")
+      : "");
+}
+
+// ---- 초기화 ----
+map = L.map("map", { zoomControl: true }).setView([35.16, 129.06], 12);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  attribution: "© OpenStreetMap · © CARTO", maxZoom: 19,
+}).addTo(map);
+
+GUS.filter((g, i) => GUS.indexOf(g) === i).forEach(g => {
+  const o = document.createElement("option");
+  o.value = o.textContent = g; if (g === curGu) o.selected = true;
+  $("#guSel").appendChild(o);
+});
+$("#guSel").addEventListener("change", async e => { curGu = e.target.value; await render(); if (aiKey) showAI(aiKey); });
+for (const [id, key] of [["btnBrand", "brand"], ["btnHeat", "heat"], ["btnReco", "reco"], ["btnApt", "apt"], ["btnFlow", "flow"], ["btnFac", "fac"], ["btnZone", "zone"]]) {
+  $("#" + id).addEventListener("click", async () => {
+    show[key] = !show[key];
+    $("#" + id).classList.toggle("on", show[key]);
+    await render();
+    if (show[key]) showAI(key);
+    else if (aiKey === key) hideAI();
+  });
+}
+
+// ---- 🤖 분석 도우미: 레이어 설명 + 현재 데이터 자동 요약 ----
+let LAST = { picks: [] };
+let aiKey = null;
+const pctOf = (a, b) => b ? Math.round(a / b * 100) : 0;
+
+function aiText(key) {
+  const catNm = curCat === "chicken" ? "치킨집" : curCat === "cafe" ? "카페" : "호프·생맥주";
+  const n = (LAST.items || []).length;
+  const dongs = Object.entries(LAST.cents || {}).sort((a, b) => b[1].n - a[1].n);
+  const topDong = dongs[0];
+
+  if (key === "brand") {
+    const bc = Object.entries(LAST.brandCnt || {}).sort((a, b) => b[1] - a[1]);
+    const bSum = bc.reduce((s, [, v]) => s + v, 0), indie = n - bSum;
+    return { t: "🏷️ 브랜드 영토란?",
+      b: `지도의 <b>점 하나 = 매장 하나</b>입니다. 색깔 있는 큰 점은 프랜차이즈, 작은 회색 점은 개인 매장이에요.<br><br>
+      지금 <b>${curGu}</b> ${catNm} <span class="num">${n}개</span> 중 프랜차이즈 <span class="num">${bSum}개(${pctOf(bSum,n)}%)</span>, 개인 매장 <span class="num">${indie}개(${pctOf(indie,n)}%)</span>.
+      ${bc.length ? `최다 브랜드는 <b>${bc[0][0]}</b> ${bc[0][1]}개${bc[1] ? `, 2위 <b>${bc[1][0]}</b> ${bc[1][1]}개` : ""}.` : ""}
+      ${indie > bSum ? "개인 매장이 더 많은 동네 = 대형 브랜드가 아직 덜 들어온 시장입니다." : "프랜차이즈 우세 = 검증된 상권이지만 경쟁 상대도 브랜드급입니다."}`,
+      tip: `<b>활용법:</b> 창업하려는 브랜드의 점을 찾아보세요. 같은 브랜드가 근처에 이미 있으면 영업권 보호 때문에 입점이 거절될 수 있습니다.` };
+  }
+  if (key === "heat") {
+    return { t: "🔥 경쟁 히트맵이란?",
+      b: `매장마다 <b>반경 300m 붉은 원</b>을 그린 것입니다. 원이 겹쳐서 <b>진하게 보일수록 경쟁이 밀집</b>된 곳이에요.<br><br>
+      ${topDong ? `지금 ${curGu}에서 가장 붉게 뭉친 곳은 <b>${topDong[0]}</b> 일대 (주변 매장 <span class="num">${topDong[1].n}개</span>)${dongs[1] ? `, 다음은 <b>${dongs[1][0]}</b>(${dongs[1][1].n}개)` : ""}.` : ""}`,
+      tip: `<b>활용법:</b> 진한 곳은 손님도 많지만 나눠 먹을 경쟁자도 많습니다. 옅은 곳이 기회일 수 있지만 산·공단이라 사람이 없는 걸 수도 있으니 🏢 집객시설을 같이 켜서 확인하세요.` };
+  }
+  if (key === "reco") {
+    const p = (LAST.picks || [])[0];
+    return { t: "⭐ 추천 입지란?",
+      b: `지도를 <b>275m 격자</b>로 잘라 자리마다 점수를 매깁니다:<br>
+      ① 주변 800m에 매장 6개 이상 → <b>사람이 다니는 상권</b><br>
+      ② 반경 500m에 같은 업종 1개 이하 → <b>경쟁 공백</b><br>
+      즉 "장사는 되는데 경쟁자가 없는 자리"를 초록 번호(1~3위)로 표시합니다.<br><br>
+      ${p ? `현재 1위 후보: 반경 500m 경쟁 <span class="num">${p.comp500}개</span> · 주변 활력 <span class="num">${p.act800}</span> (점수 ${p.score})` : ""}`,
+      tip: `<b>활용법:</b> 번호를 클릭하면 그 자리로 확대됩니다. 🏠 주거밀집을 같이 켜서 "배후 아파트까지 있는 자리"인지 검증하세요. 임대 매물·임대료는 별도 확인 필수.` };
+  }
+  if (key === "apt") {
+    const a = LAST.apt;
+    const ds = a && a.byDong ? Object.entries(a.byDong).sort((x, y) => (y[1].units || 0) - (x[1].units || 0)) : [];
+    const big = ds[0] && ds[0][1].names && ds[0][1].names[0];
+    return { t: "🏠 주거 밀집이란?",
+      b: `<b>보라 원 = 동별 아파트 세대수</b> (국토부 K-apt 실데이터). 원이 클수록 배후 수요가 큰 동네이고, <b>원을 클릭하면 단지 이름과 세대수</b>가 나옵니다.<br><br>
+      ${a && a.total ? `${curGu} 전체 <span class="num">${a.total}단지 · ${(a.totalUnits || 0).toLocaleString()}세대</span>${ds[0] ? `, 최다는 <b>${ds[0][0]}</b> <span class="num">${(ds[0][1].units || 0).toLocaleString()}세대</span>` : ""}${big ? `. 최대 단지: <b>${big.name}</b>(${big.units.toLocaleString()}세대)` : ""}.` : "데이터 로딩 중이거나 API 대기 상태입니다."}<br>
+      ${curCat === "cafe" ? "카페는 <b>아파트 세대 = 테이크아웃·모임 수요</b>이면서, 유동·직장 상권 의존도도 큽니다." : "치킨·호프는 배달·동네 업종이라 <b>아파트 세대수 = 곧 주문 수요</b>입니다."}`,
+      tip: `<b>활용법:</b> 배달 상권의 손익분기 감: 점포당 배후 400~500세대면 평균, 700세대 이상이면 여유. 원 위치는 동 중심 근사치입니다.` };
+  }
+  if (key === "zone") {
+    const z = LAST.zone;
+    return { t: "🏙️ 상업·주거 구분이란?",
+      b: `동네 성향을 색으로 구분합니다:<br>
+      <b style="color:#ff8a00">주황 = 상업 성향</b> (매장·시설이 상대적으로 많음)<br>
+      <b style="color:#a371f7">보라 = 주거 성향</b> (아파트 세대가 상대적으로 많음)<br>
+      <b style="color:#22c1dd">점선 청록 = 혼합</b> (둘 다 비슷)<br><br>
+      ${z ? `${curGu} 판정: 상업 <span class="num">${z.zCnt["상업"]}</span> · 주거 <span class="num">${z.zCnt["주거"]}</span> · 혼합 <span class="num">${z.zCnt["혼합"]}</span>개 동.` : ""}
+      원을 클릭하면 그 동의 상업 지표(매장·시설 수)와 주거 지표(아파트 세대수)를 보여줍니다.<br>
+      ⚠️ 법적 용도지역이 아니라 <b>보유 데이터 기반 추정</b>입니다.`,
+      tip: `<b>활용법:</b> 카페는 <b>상업지 = 유동·테이크아웃형</b>, <b>주거지 = 단골·동네카페형</b>으로 전략이 갈립니다. 혼합 지역은 둘 다 노릴 수 있지만 임대료 대비 수요를 꼭 비교하세요.` };
+  }
+  if (key === "flow") {
+    return { t: "🚶 유동 추정이란?",
+      b: `<b>청록 원 = 동별로 가게가 얼마나 몰려 있는지</b>로 "사람이 모이는 정도"를 추정한 것입니다.<br><br>
+      ⚠️ 솔직한 안내: 이건 <b>진짜 유동인구(통신사 측정)가 아니라 추정치</b>입니다. "장사하는 가게가 많다 = 사람이 다닌다"는 간접 지표예요.<br><br>
+      ${topDong ? `현재 ${curGu} 활력 1위: <b>${topDong[0]}</b> (<span class="num">${topDong[1].n}</span>)` : ""}`,
+      tip: `<b>실측 데이터를 원하면:</b> bigdata.busan.go.kr (부산 빅데이터 혁신플랫폼) 가입 → 유동인구 데이터 신청 → 받은 파일을 폴더에 넣고 요청하면 이 레이어를 실데이터로 교체해 드립니다.` };
+  }
+  if (key === "fac") {
+    const f = LAST.fac;
+    const gs = f && f.groups ? Object.entries(f.groups).sort((x, y) => y[1].count - x[1].count) : [];
+    return { t: "🏢 집객시설이란?",
+      b: `사람을 끌어모으는 시설들입니다: <b style="color:#f85149">병원</b> · <b style="color:#ff9d5d">약국</b> · <b style="color:#d29922">카페</b> · <b style="color:#3fb950">편의점</b> · <b style="color:#58a6ff">학원</b>.<br><br>
+      ${gs.length ? `${curGu} 현황: ${gs.map(([g, d]) => `${g} <span class="num">${d.count}</span>`).join(" · ")}.<br>` : "레이어를 켜면 로드됩니다 (최초 1회 최대 1분).<br>"}
+      <b>학원·병원이 많으면</b> 대기·모임 수요(카페 이용↑), <b>편의점이 많으면</b> 생활 유동 발생지입니다.`,
+      tip: `<b>활용법:</b> 시설이 몰린 곳은 이미 검증된 목이지만 임대료도 비쌉니다. ⭐ 추천입지 후보가 시설 근처에 있는지 교차 확인하세요.` };
+  }
+  return null;
+}
+function showAI(key) {
+  const c = aiText(key);
+  if (!c) return;
+  aiKey = key;
+  $("#aiPanel").innerHTML = `<h4>${c.t}<span class="x" onclick="hideAI()">✕</span></h4>
+    <div>${c.b}</div><div class="tip">${c.tip}</div>`;
+  $("#aiPanel").style.display = "block";
+}
+window.hideAI = function () { aiKey = null; $("#aiPanel").style.display = "none"; };
+
+render().then(() => showAI("brand"));   // 첫 화면: 브랜드 영토 설명을 바로 보여줌
+</script>
+</body>
+</html>

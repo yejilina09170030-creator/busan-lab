@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: busan-sangkwon-lab
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATA_GO_KR
+        sync: false   # Render 대시보드에서 직접 입력(비밀값) — data.go.kr 인증키

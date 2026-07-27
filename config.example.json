@@ -1,0 +1,6 @@
+{
+  "_설명": "이 파일을 복사해서 config.json 으로 저장하고 키를 채우세요. config.json 이 있으면 LIVE(실데이터)로 동작합니다.",
+  "dataGoKr": "공공데이터포털에서 발급받은 일반 인증키(Decoding)",
+  "sgisKey": "통계청 SGIS 서비스 ID (선택)",
+  "sgisSecret": "통계청 SGIS 보안 Key (선택)"
+}
