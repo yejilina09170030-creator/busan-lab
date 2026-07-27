@@ -46,6 +46,15 @@ const g = async u => (await fetch(base + u)).json();
   try { if (fs.existsSync("rest_data.json")) rest = JSON.parse(fs.readFileSync("rest_data.json", "utf8")); } catch (e) {}
   console.log("음식점 표본:", Object.values(rest).reduce((a, b) => a + b.length, 0), "개");
 
+  // 브랜드 TOP10 — 실제 매장명에서 감지한 브랜드로 집계(기존 랜덤 추정 대체)
+  const brandCnt = {};
+  for (const gu of GU) for (const s of (stores[gu] || [])) if (s.brand) brandCnt[s.brand] = (brandCnt[s.brand] || 0) + 1;
+  const brandList = Object.entries(brandCnt).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, cat: "카페", count }));
+  const totalStores2 = GU.reduce((a, gu) => a + (stores[gu] || []).length, 0);
+  const totalBrand = Object.values(brandCnt).reduce((a, b) => a + b, 0);
+  data.brands = { totalStores: totalStores2, franchisePct: totalStores2 ? Math.round(totalBrand / totalStores2 * 100) : 0, isLive: true, list: brandList };
+  console.log("브랜드 TOP10(실집계):", brandList.slice(0, 5).map(b => b.name + " " + b.count).join(" · "), "· 프랜차이즈", data.brands.franchisePct + "%");
+
   const snap = { data, geo, stores, facilities, trade, tracker, apt, rest, builtAt: data.meta.generatedAt };
   fs.writeFileSync("snapshot_full.json", JSON.stringify(snap));
   console.log("DONE", (fs.statSync("snapshot_full.json").size / 1048576).toFixed(2), "MB");
