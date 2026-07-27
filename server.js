@@ -268,12 +268,12 @@ function weekdayPattern(){ const b={"월":78,"화":80,"수":83,"목":86,"금":10
   return ["월","화","수","목","금","토","일"].map(day=>({ day, weight:b[day] })); }
 
 // ---- /api/data -------------------------------------------------------------
+// 수집해둔 실데이터 스냅샷(캐시) — 키 없는 배포서버가 실데이터를 제공하는 데 사용
+let SNAP_CACHE=null;
+function bakedSnap(){ if(!SNAP_CACHE){ try{ SNAP_CACHE=JSON.parse(fs.readFileSync(path.join(__dirname,"snapshot_full.json"),"utf8")); }catch(e){ SNAP_CACHE={}; } } return SNAP_CACHE; }
 app.get("/api/data", async (req,res)=>{
   // 키가 없으면(배포 공유서버 등) 수집해둔 실데이터 스냅샷을 그대로 제공 → MOCK 안 나옴
-  if(!HAS_KEY){
-    try{ const snap=JSON.parse(fs.readFileSync(path.join(__dirname,"snapshot_full.json"),"utf8"));
-      if(snap&&snap.data&&snap.data.districts) return res.json(snap.data); }catch(e){}
-  }
+  if(!HAS_KEY){ const s=bakedSnap(); if(s.data&&s.data.districts) return res.json(s.data); }
   let source="MOCK", liveError=null, counts=null;
   if(HAS_KEY){
     try{ counts=await liveCafeCounts(); source="LIVE"; }
@@ -293,6 +293,7 @@ app.get("/api/stores", async (req,res)=>{
   const gu=req.query.gu||"부산진구";
   const cat=req.query.cat||"cafe";
   if(cat!=="cafe") return res.json({ items:[], source:"LIVE", total:0 });  // 카페 전용
+  if(!HAS_KEY){ const st=(bakedSnap().stores||{})[gu]||[]; return res.json({ items:st, source:"LIVE", total:st.length }); }
   if(HAS_KEY){
     try{ const live=await liveStores(gu); if(live&&live.length) return res.json({ items:live, source:"LIVE", total:live.length }); }
     catch(e){ console.warn("liveStores 실패:", e.message); }
@@ -303,6 +304,7 @@ app.get("/api/stores", async (req,res)=>{
 // ---- /api/facilities : 집객시설(병원·약국·카페·편의점·학원) --------------
 app.get("/api/facilities", async (req,res)=>{
   const gu=req.query.gu||"부산진구";
+  if(!HAS_KEY){ const f=(bakedSnap().facilities||{})[gu]; return res.json(f||{ source:"NONE", groups:{} }); }
   if(HAS_KEY){
     try{ const f=await liveFacilities(gu); if(f) return res.json(f); }
     catch(e){ console.warn("liveFacilities 실패:", e.message); }
@@ -358,6 +360,7 @@ app.post("/api/shop", express.text({type:()=>true, limit:"2mb"}), (req,res)=>{
 // ---- /api/trade ------------------------------------------------------------
 app.get("/api/trade", async (req,res)=>{
   const gu=req.query.gu||"부산진구";
+  if(!HAS_KEY){ const t=(bakedSnap().trade||{})[gu]; return res.json(t||{ source:"NONE", count:0, avgByDong:{}, deals:[] }); }
   if(HAS_KEY){
     try{ const t=await liveTrade(gu); if(t&&t.count) return res.json(t); }
     catch(e){ console.warn("liveTrade 실패:", e.message); }
