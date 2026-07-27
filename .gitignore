@@ -12,5 +12,5 @@ _preview_static.js
 apt_cache.json
 
 # 배포에 필요한 데이터 파일은 포함됨(무시하지 않음):
-#   snapshot_full.json, apt_data.json, rest_data.json,
+#   snapshot_full.json, apt_data.json, rest_data.json, roads_data.json,
 #   server.js, package.json, public/, 부산 카페 상권분석 대시보드 (공유용).html

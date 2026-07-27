@@ -280,11 +280,14 @@ app.get("/api/data", async (req,res)=>{
     catch(e){ liveError=e.message; console.warn("liveCafeCounts 실패:", e.message); }
   }
   const districts=GU.map(gu=>buildDistrict(gu, counts?counts[gu]:null));
+  // 브랜드 TOP10 — 매장명 실집계 스냅샷이 있으면 그걸 사용(랜덤 추정 대체), 없으면 폴백
+  const bk=bakedSnap(); const bkBrands=bk.data&&bk.data.brands;
+  const brands=(bkBrands&&bkBrands.list&&bkBrands.list.length)?bkBrands:buildBrands(districts, source==="LIVE");
   // (가짜 랜덤 노이즈 제거 — 새로고침 시 실제 데이터가 바뀔 때만 값이 변함)
   res.json({
     meta:{ category:"카페", source, liveError, generatedAt:new Date().toISOString(),
       note: source==="LIVE" ? "점포수=소상공인 실데이터 · 매출/인구=추정" : "키 미등록/오류 — 전부 추정치" },
-    districts, brands:buildBrands(districts, source==="LIVE"), hour:hourPattern(), weekday:weekdayPattern()
+    districts, brands, hour:hourPattern(), weekday:weekdayPattern()
   });
 });
 
@@ -381,6 +384,14 @@ app.get("/api/rest", (req,res)=>{
   const gu=req.query.gu||"부산진구";
   try{ if(!REST_DATA) REST_DATA=JSON.parse(fs.readFileSync(path.join(__dirname,"rest_data.json"),"utf8")); }catch(e){ REST_DATA={}; }
   res.json({ source:"LIVE", items:REST_DATA[gu]||[] });
+});
+
+// ---- /api/roads : 유동밀도 시각화용 도로점(사전수집) — roads_data.json -------
+let ROADS_DATA=null;
+app.get("/api/roads", (req,res)=>{
+  const gu=req.query.gu||"부산진구";
+  try{ if(!ROADS_DATA) ROADS_DATA=JSON.parse(fs.readFileSync(path.join(__dirname,"roads_data.json"),"utf8")); }catch(e){ ROADS_DATA={}; }
+  const g=ROADS_DATA[gu]; res.json({ source:"BAKED", ways:g?g.ways:0, pts:g?g.pts:[] });
 });
 
 // ---- 정적 파일 + 시작 ------------------------------------------------------
